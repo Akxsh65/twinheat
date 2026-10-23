@@ -1,0 +1,3 @@
+# Minimal dependencies for CI (lint + CPU tests only). The full stack is requirements.txt.
+pytest==9.1.1
+ruff==0.17.2
