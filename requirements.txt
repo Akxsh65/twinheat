@@ -1,0 +1,4 @@
+# CI / local test dependencies (CLAUDE.md §4). Heavy dependencies (torch, cupy, ...) are
+# added by the task that first needs them; exact pins are decided then.
+pytest>=8
+ruff>=0.5

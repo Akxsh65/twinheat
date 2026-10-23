@@ -1,0 +1,18 @@
+# data and checkpoints never go in git (CLAUDE.md §4)
+data/**/shard_*
+checkpoints/
+*.npy
+*.pt
+*.parquet
+results/**/raw
+node_modules/
+.ipynb_checkpoints
+
+# tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
