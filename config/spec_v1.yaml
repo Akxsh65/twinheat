@@ -1,0 +1,128 @@
+# TwinHeat-2D v1.0: 64x64 development plate (CLAUDE.md §6).
+# Every quantity is {value, unit, range, source}. Rules:
+#  - SI units for physics and the stack. Sampler lengths are in mm because board records use mm
+#    (CLAUDE.md §0 rule 6, §10.1); the unit field says which.
+#  - Fixed constants have range [v, v]. Distributions use `dist`: uniform / loguniform /
+#    uniform_int / range (range stated, distribution not given in CLAUDE.md) take value [lo, hi];
+#    categorical takes value [choices] plus p; set takes value [choices] with no p given.
+#  - Floats need a dot AND a signed exponent (35.0e-6, not 35e-6): PyYAML reads 35e-6 as text.
+#    The loader rejects numeric-looking text.
+spec_version: "1"
+
+meta:
+  name: TwinHeat-2D
+  version: "1.0"
+  description: 64x64 development plate used for unit tests, fast iteration and the preliminary certificate reproduction
+
+geometry:
+  L: {value: 0.100, unit: m, range: [0.100, 0.100], source: "CLAUDE.md §6.3"}
+  t: {value: 1.6e-3, unit: m, range: [1.6e-3, 1.6e-3], source: "CLAUDE.md §6.3"}
+  N: {value: 64, unit: count, range: [64, 64], source: "CLAUDE.md §6.4", note: "cells per side, cell-centred FV; dx = L/N = 1.5625 mm"}
+  N_transfer: {value: [32, 128, 256], unit: count, range: [32, 256], source: "CLAUDE.md §6.4", note: "transfer-test resolutions"}
+
+materials:
+  t_cu: {value: 35.0e-6, unit: m, range: [17.5e-6, 70.0e-6], source: "CLAUDE.md §6.3", note: "1 oz nominal; options 17.5e-6 (0.5 oz), 70.0e-6 (2 oz); 3 oz = 105.0e-6 is OOD"}
+  k_fr4_xy: {value: 0.81, unit: "W/(m·K)", range: [0.81, 1.06], source: "CLAUDE.md §6.3", note: "nominal 0.81; sampler U[0.81, 1.06]"}
+  k_fr4_z: {value: 0.29, unit: "W/(m·K)", range: [0.29, 0.343], source: "CLAUDE.md §6.3"}
+  k_cu: {value: 390.0, unit: "W/(m·K)", range: [385.0, 400.0], source: "CLAUDE.md §6.3"}
+  t_inf_display: {value: 25.0, unit: degC, range: [25.0, 25.0], source: "CLAUDE.md §6.3", note: "display only; theta is a rise above ambient and T_inf is not a model input"}
+
+convection:
+  natural_training: {value: [5.0, 15.0], unit: "W/(m²·K)", range: [5.0, 15.0], dist: range, source: "CLAUDE.md §6.3", note: "per face"}
+  forced_training: {value: [25.0, 50.0], unit: "W/(m²·K)", range: [25.0, 50.0], dist: range, source: "CLAUDE.md §6.3"}
+  natural_gases: {value: [2.0, 25.0], unit: "W/(m²·K)", range: [2.0, 25.0], dist: range, source: "CLAUDE.md §6.3", note: "range for gases in general, not a training range"}
+  forced_gases: {value: [25.0, 250.0], unit: "W/(m²·K)", range: [25.0, 250.0], dist: range, source: "CLAUDE.md §6.3", note: "range for gases in general, not a training range"}
+  biot_max: {value: 0.3, unit: "1", range: [0.3, 0.3], source: "CLAUDE.md §6.1", note: "assumption A2: Bi = h*t/k_z <= 0.3"}
+
+discretisation:
+  supersample_per_axis: {value: 4, unit: count, range: [4, 4], source: "CLAUDE.md §6.4", note: "sample points at (i+0.5)/4"}
+  min_feature_cells: {value: 2, unit: count, range: [2, 2], source: "CLAUDE.md §6.4", note: "3.125 mm at N = 64; smaller is OOD"}
+  min_chip_cells: {value: 3, unit: count, range: [3, 3], source: "CLAUDE.md §6.4"}
+  face_conductance: {value: harmonic_mean, unit: text, source: "CLAUDE.md §6.4", note: "G_f = 2 G_P G_N / (G_P + G_N)"}
+  rel_residual_tol: {value: 1.0e-10, unit: "1", range: [0.0, 1.0e-10], source: "CLAUDE.md §6.4", note: "data-generation tolerance"}
+  mms_slope: {value: 2.0, unit: "1", range: [1.9, 2.1], source: "CLAUDE.md §6.4", note: "2.0 +- 0.1 on N = 32..256"}
+  energy_balance_tol: {value: 1.0e-3, unit: "1", range: [0.0, 1.0e-3], source: "CLAUDE.md §6.4", note: "0.1 % per board"}
+
+sampler:
+  copper_oz: {value: [0.5, 1.0, 2.0], unit: oz, range: [0.5, 2.0], dist: categorical, p: [0.2, 0.6, 0.2], source: "CLAUDE.md §6.5", note: "all layers"}
+  n_plane: {value: [0, 1, 2], unit: count, range: [0, 2], dist: categorical, p: [0.4, 0.4, 0.2], source: "CLAUDE.md §6.5", note: "full internal planes"}
+  k_fr4_xy: {value: [0.81, 1.06], unit: "W/(m·K)", range: [0.81, 1.06], dist: uniform, source: "CLAUDE.md §6.5"}
+  painted_region_count: {value: [2, 8], unit: count, range: [2, 8], dist: uniform_int, source: "CLAUDE.md §6.5"}
+  painted_region_type: {value: [rect, disc, trace], unit: text, dist: categorical, p: [0.50, 0.25, 0.25], source: "CLAUDE.md §6.5"}
+  painted_region_centre: {value: uniform_over_board_clipped, unit: text, source: "CLAUDE.md §6.5"}
+  rect_side: {value: [5.0, 40.0], unit: mm, range: [5.0, 40.0], dist: uniform, source: "CLAUDE.md §6.5", note: "axis-aligned"}
+  disc_radius: {value: [3.0, 15.0], unit: mm, range: [3.0, 15.0], dist: uniform, source: "CLAUDE.md §6.5"}
+  trace_segment_count: {value: [2, 4], unit: count, range: [2, 4], dist: uniform_int, source: "CLAUDE.md §6.5", note: "axis-aligned segments"}
+  trace_width: {value: [3.2, 6.0], unit: mm, range: [3.2, 6.0], dist: uniform, source: "CLAUDE.md §6.5"}
+  trace_segment_length: {value: [10.0, 50.0], unit: mm, range: [10.0, 50.0], dist: uniform, source: "CLAUDE.md §6.5"}
+  painted_mean_phi: {value: [0.10, 0.60], unit: "1", range: [0.10, 0.60], dist: range, source: "CLAUDE.md §6.5", note: "total mean phi; otherwise resample"}
+  chip_count: {value: [1, 4], unit: count, range: [1, 4], dist: uniform_int, source: "CLAUDE.md §6.5"}
+  chip_short_side: {value: [4.7, 20.0], unit: mm, range: [4.7, 20.0], dist: uniform, source: "CLAUDE.md §6.5"}
+  chip_aspect: {value: [1.0, 2.0], unit: "1", range: [1.0, 2.0], dist: uniform, source: "CLAUDE.md §6.5"}
+  chip_gap_min: {value: 2.0, unit: mm, range: [2.0, 2.0], source: "CLAUDE.md §6.5", note: "lower bound between chips"}
+  chip_edge_margin_min: {value: 3.0, unit: mm, range: [3.0, 3.0], source: "CLAUDE.md §6.5", note: "lower bound from board edges"}
+  chip_placement_max_tries: {value: 100, unit: count, range: [100, 100], source: "CLAUDE.md §6.5", note: "then resample the count"}
+  chip_power: {value: [0.1, 3.0], unit: W, range: [0.1, 3.0], dist: loguniform, source: "CLAUDE.md §6.5"}
+  total_power_max: {value: 6.0, unit: W, range: [6.0, 6.0], source: "CLAUDE.md §6.5", note: "rescale all chip powers if exceeded"}
+  chip_source_density: {value: uniform_over_footprint, unit: text, source: "CLAUDE.md §6.5", note: "q = P_i / A_i"}
+  h_top_base: {value: [5.0, 15.0], unit: "W/(m²·K)", range: [5.0, 15.0], dist: uniform, source: "CLAUDE.md §6.5"}
+  h_bot_base: {value: [5.0, 15.0], unit: "W/(m²·K)", range: [5.0, 15.0], dist: uniform, source: "CLAUDE.md §6.5"}
+  forced_zone_probability: {value: 0.3, unit: "1", range: [0.3, 0.3], source: "CLAUDE.md §6.5"}
+  forced_zone_side: {value: [20.0, 100.0], unit: mm, range: [20.0, 100.0], dist: uniform, source: "CLAUDE.md §6.5"}
+  forced_zone_h_top: {value: [25.0, 50.0], unit: "W/(m²·K)", range: [25.0, 50.0], dist: uniform, source: "CLAUDE.md §6.5"}
+
+envelope:
+  theta_max: {value: 100.0, unit: K, range: [100.0, 100.0], source: "CLAUDE.md §6.5", note: "if max theta exceeds this, scale every P_i by 100/max theta (exact, no re-solve)"}
+  max_rescaled_fraction: {value: 0.20, unit: "1", range: [0.0, 0.20], source: "CLAUDE.md §6.5", note: "above this, lower the power range instead"}
+
+boundary:
+  n_dirichlet_edges: {value: [0, 1, 2], unit: count, range: [0, 2], dist: categorical, p: [0.5, 0.3, 0.2], source: "CLAUDE.md §6.6"}
+  dirichlet_theta: {value: 0.0, unit: K, range: [0.0, 0.0], source: "CLAUDE.md §6.6"}
+  edge_choice: {value: uniform_opposite_or_adjacent_allowed, unit: text, source: "CLAUDE.md §6.6"}
+
+ood:
+  ood_1:
+    axis: chip count
+    source: "CLAUDE.md §6.7"
+    params:
+      chip_count: {value: [5, 8], unit: count, range: [5, 8], dist: range, source: "CLAUDE.md §6.7"}
+  ood_2:
+    axis: chip power
+    source: "CLAUDE.md §6.7"
+    params:
+      chip_power: {value: [3.0, 6.0], unit: W, range: [3.0, 6.0], dist: range, source: "CLAUDE.md §6.7", note: per chip}
+      total_power_max: {value: 12.0, unit: W, range: [12.0, 12.0], source: "CLAUDE.md §6.7", note: envelope still applied}
+  ood_3:
+    axis: copper geometry
+    source: "CLAUDE.md §6.7"
+    params:
+      shapes: {value: [L_shape, annulus, trace_45deg], unit: text, dist: set, source: "CLAUDE.md §6.7"}
+  ood_4:
+    axis: thin features
+    source: "CLAUDE.md §6.7"
+    params:
+      trace_width: {value: [0.8, 2.0], unit: mm, range: [0.8, 2.0], dist: range, source: "CLAUDE.md §6.7"}
+  ood_5:
+    axis: contrast
+    source: "CLAUDE.md §6.7"
+    params:
+      contrast_ratio: {value: [130.0, 160.0], unit: "1", range: [130.0, 160.0], dist: range, source: "CLAUDE.md §6.7", note: "approximate (about 130-160)"}
+      t_cu_3oz: {value: 105.0e-6, unit: m, range: [105.0e-6, 105.0e-6], source: "CLAUDE.md §6.3"}
+      n_plane: {value: [3, 4], unit: count, range: [3, 4], dist: range, source: "CLAUDE.md §6.7"}
+  ood_6:
+    axis: boundary
+    source: "CLAUDE.md §6.7"
+    params:
+      n_dirichlet_edges: {value: [3, 4], unit: count, range: [3, 4], dist: range, source: "CLAUDE.md §6.7"}
+      partial_edge: {value: partial_edge_segments, unit: text, source: "CLAUDE.md §6.7", note: "alternative OOD-6 variant"}
+  ood_7:
+    axis: convection
+    source: "CLAUDE.md §6.7"
+    params:
+      h_natural: {value: [2.0, 5.0], unit: "W/(m²·K)", range: [2.0, 5.0], dist: range, source: "CLAUDE.md §6.7"}
+      h_forced: {value: [50.0, 100.0], unit: "W/(m²·K)", range: [50.0, 100.0], dist: range, source: "CLAUDE.md §6.7"}
+  ood_8:
+    axis: resolution
+    source: "CLAUDE.md §6.7"
+    params:
+      N: {value: [128, 256], unit: count, range: [128, 256], dist: set, source: "CLAUDE.md §6.7", note: "same ID boards; a discretisation test"}
