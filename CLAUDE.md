@@ -273,6 +273,7 @@ With n_a ≈ pT audits, the slack is O(1/(γ n_a)) + O(√(ln(1/δ)/(p n_a))).
 Proof sketch: (1) an accepted design with error > τ has error > B_t, so W_T ≤ M_T, the miscoverage over all steps [ours]; (2) on audited steps, ACI bounds miscoverage within C/(γ n_a) of α deterministically (Gibbs & Candès Prop. 4.1, applied to the revealed subsequence as in Tu & Giesecke Thm 5.4) [cited]; (3) transfer to all steps under MCAR revelation is Tu & Giesecke Thm 5.6, in expectation [cited]. Here it's made high-probability because m_t is fixed before the coin, so (A_t − p)·m_t is a bounded martingale difference → Azuma–Hoeffding, with Hoeffding controlling n_a/(pT) [ours].
 Corollary: among accepted predictions, the error rate ≤ W_T / accepted fraction. Report both.
 Limits: a long-run average, not per step (errors can cluster); says nothing about final design quality (H2); holds only if the proposer can't see the coin before committing.
+**Citation numbering (open, D12):** in the provided v2 PDF (arXiv 2605.17705v2), Thm 5.4 is the spatial similarity-weight bound and 5.6 is an *assumption*. The results meant in steps (2)–(3) are **Prop. 5.5** (revealed-round identity) and **Thm 5.9** (eq. 10, revealed rounds w.h.p.; eq. 11, all rounds in expectation). Exact statements and what they force on the code: §18.1.
 
 ### 8.3 Lemma 1′ (certified audit scores)
 If an audit returns a certified interval [T⁻, T⁺] for the true peak instead of the exact value, record S⁺ = max(|T̂_peak − T⁻|, |T̂_peak − T⁺|)/s ≥ S, and use S⁺ for err_t = 1[S⁺ > q_t] and in the score window. Lemma 1 holds for the S⁺ stream: an accepted large error implies S > q_t, hence S⁺ > q_t. Price: q_t slightly conservative when intervals are wide. The audit stops when the interval is decided relative to q_t or narrower than ε_S (E14).
@@ -284,11 +285,11 @@ Let A be a nonsingular M-matrix, x̃ any approximation of θ with Aθ = b, r = b
 (c) If w ≥ 0 and Aw ≥ |r| componentwise, then |e| ≤ w, and max_i(x̃_i − w_i) ≤ T_peak ≤ max_i(x̃_i + w_i).
 Proof: A⁻¹ ≥ 0 and Az ≥ min(Az)·1 ⇒ A⁻¹1 ≤ z/min(Az), and ‖A⁻¹‖∞ = max entry of A⁻¹1 → (a). (b) from e = A⁻¹r. (c): |e| = |A⁻¹r| ≤ A⁻¹|r| ≤ A⁻¹Aw = w.
 **Decision-sufficient stopping.** Per design: z ≈ A⁻¹1 by 3 multigrid V-cycles (any positive z is valid; accuracy only affects tightness); check min(Az) > 0 and min z > 0 once in **FP64**. At PCG iterate k, c_k = κ̂·‖r_k‖∞ bounds every cell's error. Flagged design: stop when c_k ≤ τ_v. Audit: stop when the certified score interval is decided relative to q_t or narrower than ε_S. Residual and Az in FP64 with a **derived** rounding margin (`certify/margin.py`). Never certify on the FP32 recursive residual alone. Pointwise variant (c) where a sharper bound is worth an extra approximate solve: Gauss–Seidel smoothing of the prediction, approximate A w = |r| solve (4 V-cycles) + two-SpMV fix-up, validity asserted.
-Scope: certifies distance to the exact discrete solution only. Needs the M-matrix property (true for 4-layer conduction, Darcy, upwinded advection–diffusion). Where it fails, fall back to A-norm CG bounds (Meurant & Tichý).
+Scope: certifies distance to the exact discrete solution only. Needs the M-matrix property (true for 4-layer conduction, Darcy, upwinded advection–diffusion). Where it fails, fall back to A-norm CG bounds (Meurant & Tichý). Caveats on that fallback, Varah's z = 1 special case and PCG details: §18.5 (and D11).
 
 ### 8.5 Extensions
-- **G6, per-group (Extension A).** Groups 𝒢: proposer P1–P4, aggressiveness (3 levels), OOD-score tercile, hotspot within 5 mm of an edge; groups may intersect. Per-group thresholds q_{t,g} updated on audited steps with MultiValid Prediction (Bastani et al. 2022). Target statement (to be proved, week 7): for every group with n_{a,g} audits, the accepted-error rate in g ≤ α + slack(n_{a,g}). Argument: membership is fixed before the coin, so each group's audits are an unbiased subsample, and Lemma 1's transfer applies per group. **Fallback by week 8: report as empirical.**
-- **G7, risk-adaptive audits (Extension B).** p_t = max(p_min, π(s_t, σ_t, g_t)), mean p_t = p̄; π never sees the label. Update α_{t+1} = α_t + γ·(p̄/p_t)·A_t·(α − err_t). Weights have conditional mean 1, bounded by 1/p_min. π interpolates between uniform and uncertainty-proportional sampling (Zrnic & Candès 2024; Li, Zrnic & Candès 2025). Reported as an ablation, not a headline.
+- **G6, per-group (Extension A).** Groups 𝒢: proposer P1–P4, aggressiveness (3 levels), OOD-score tercile, hotspot within 5 mm of an edge; groups may intersect. Per-group thresholds q_{t,g} updated on audited steps with MultiValid Prediction (Bastani et al. 2022). Target statement (to be proved, week 7): for every group with n_{a,g} audits, the accepted-error rate in g ≤ α + slack(n_{a,g}). Argument: membership is fixed before the coin, so each group's audits are an unbiased subsample, and Lemma 1's transfer applies per group. **Fallback by week 8: report as empirical.** MVP algorithm, its assumptions and the gaps the proof must close: §18.3.
+- **G7, risk-adaptive audits (Extension B).** p_t = max(p_min, π(s_t, σ_t, g_t)), mean p_t = p̄; π never sees the label. Update α_{t+1} = α_t + γ·(p̄/p_t)·A_t·(α − err_t). Weights have conditional mean 1, bounded by 1/p_min. π interpolates between uniform and uncertainty-proportional sampling (Zrnic & Candès 2024; Li, Zrnic & Candès 2025). Reported as an ablation, not a headline. Neither Gibbs & Candès (fixed γ) nor Tu & Giesecke (no IPW update) covers this variable step: G7 has no cited validity argument yet (§18.1).
 - **Why audits:** updating q from flagged labels only calibrates on the wrong population (G4 shows the bias). Sweep p ∈ {0.05, 0.1, 0.2}.
 
 ### 8.6 Preliminary evidence (5 Oct 2026, 64² plate, emulated errors; to be reproduced in Phase 1 and repeated on 4 layers in E13)
@@ -508,8 +509,8 @@ Server timestamps for E11: every server message may carry `t_server_ns` (monoton
 | ID | Gate | Source |
 |---|---|---|
 | G0 | no gate; final design verified once | — |
-| G1 | hotspot-residual gate, sliding-window (FIFO, 100) percentile, fixed flag rate f (tuned to match budget) | DeepOHeat-v2 Algorithm 1 (text in `docs/refs/`) |
-| G2 | static split conformal on s, calibrated once on p₀ | — |
+| G1 | hotspot-residual gate, sliding-window (FIFO, 100) percentile, fixed flag rate f (tuned to match budget) | DeepOHeat-v2 Algorithm 1 (text in `docs/refs/`); details and differences §18.4, D13 |
+| G2 | static split conformal on s, calibrated once on p₀ | quantile level §18.2, D8 |
 | G3 | weighted split conformal | Tibshirani et al. 2019; Fannjiang et al. 2022; Choi 2026. Exact weights for P1; classifier density ratio (clipped) for others |
 | G4 | ACI updated on **flagged** labels only (selection-bias ablation) | — |
 | G5 | audited ACI, uniform audits, certified audits (Lemma 1, 1′) | p ∈ {0.05, 0.1, 0.2} |
@@ -591,7 +592,7 @@ Key fallbacks: q oscillates → smaller γ, larger W, p = 0.2 early then 0.1 · 
 ### 16.1 Core citations (verified in Phase 0)
 DeepOHeat-v2 (Yu et al., arXiv 2608.16080, 2026) · Gibbs & Candès, ACI, NeurIPS 2021 · Tu & Giesecke, arXiv 2605.17705 (2026) · Ma & Zhao, arXiv 2608.01378 (2026) · Xu, Karampatziakis & Mineiro, NeurIPS 2024 · Zrnic & Candès, ICML 2024 · Li, Zrnic & Candès, NeurIPS 2025 · Bastani et al., Multivalid CP, NeurIPS 2022 · Lekeufack et al., Conformal Decision Theory · Fannjiang et al., PNAS 2022 · Choi, ICML 2026 · Tibshirani et al. 2019 · Meurant & Tichý 2018 · Varah 1975 · Astral (ICLR 2026) · Hillebrecht & Unger 2023 · Chin 2026 · Li et al., FNO, ICLR 2021 · PDEBench (Takamoto et al. 2022) · McGreivy & Hakim 2024 · NOWS 2025 · Cresswell et al., ICML 2024 · Correll, Moritz & Heer, VSUP, CHI 2018 · Cabral & Leedom, LIC 1993 · Zhang & Chen, PLOS ONE 2024 · IC-ThermBench 2026. Full list: Phase 0 §1 and plan §16/§20.
 ### 16.2 `docs/refs/` (humans add these; Claude reads them, never reconstructs them)
-`deepoheat_v2_alg1.txt` (Algorithm 1 text) · `bastani2022_mvp.txt` (MultiValid algorithm) · `gibbs_candes_prop41.txt`, `tu_giesecke_thm54_56.txt` (theorem statements) · `pdebench_darcy_fno.txt` (published FNO Darcy error) · `cie1931_2deg_5nm.csv` · `planckian_locus_check.csv` (reference chromaticities) · `fab_stackup.txt` · `camera_datasheet.pdf` · `bench/prelim/stop.js`, `cert.js` (preliminary prototypes).
+`deepoheat_v2_alg1.txt` (Algorithm 1 text) · `bastani2022_mvp.txt` (MultiValid algorithm) · `gibbs_candes_prop41.txt` (Lemma 4.1 + Prop. 4.1), `tu_giesecke_thm54_56.txt` (theorem statements; must be taken from **v2**: Prop. 5.5, Assumptions 5.6/5.8, Thm 5.9, Props 5.7, B.14, B.15; see D12) · `pdebench_darcy_fno.txt` (published FNO Darcy error) · `cie1931_2deg_5nm.csv` · `planckian_locus_check.csv` (reference chromaticities) · `fab_stackup.txt` · `camera_datasheet.pdf` · `bench/prelim/stop.js`, `cert.js` (preliminary prototypes).
 
 ## 17 · Open decisions (Claude must ask, not assume)
 | ID | Decision | Owner | Due |
@@ -602,3 +603,67 @@ DeepOHeat-v2 (Yu et al., arXiv 2608.16080, 2026) · Gibbs & Candès, ACI, NeurIP
 | D4 | Frozen gate hyperparameters α, τ, γ, W, λ, m, p, ε_S, p_min, chosen on validation trajectories → `experiments/configs/frozen.yaml` | M | wk 6 |
 | D5 | Week-3 go/no-go outcome (keep 256²×4, or 6 layers / 384²) | N + M | wk 3 |
 | D6 | Week-1 start date of the 12-week schedule | all | wk 0 |
+| D7 | ACI upper boundary: §8.2 sets q = 0 when α_k ≥ 1, so err = 1[S⁺ > 0]; Gibbs & Candès Lemma 4.1 needs err = 1 whenever α_k > 1. Force err = 1 there, or keep q = 0? (differs only if S⁺ = 0 exactly) (§18.1) | M (Lemma 1 checker) | before gate code |
+| D8 | G2 initial quantile: plain `quantile(scores, 1 − α)` (§9.3) or the split-conformal level ⌈(n+1)(1−α)⌉/n with "higher" interpolation (§18.2); and whether the ACI path uses the same correction | M | before gate code |
+| D9 | G6 / MVP settings: bucket count m_MVP, grid factor r, ε, score-noise width for smoothness; whether they go in `frozen.yaml` under D4; whether `query` previews may show a randomised q_{t,g} or only a value fixed at commit (§18.3) | M | before E15 |
+| D10 | Production PCG preconditioner `Minv`, and confirmation that it is SPD (symmetric V-cycle: symmetric smoothing, R = Pᵀ) (§18.5) | N | before `solvers/pcg.py` merges |
+| D11 | Narrow the §8.4 fallback wording? Meurant & Tichý needs SPD A and a guaranteed μ ≤ λ_min; it covers neither failure case §7.2 names (§18.5) | N | — |
+| D12 | Correct the Tu & Giesecke theorem numbers in §8.2 to v2 (Prop. 5.5, Thm 5.9) and regenerate `docs/refs/tu_giesecke_thm54_56.txt` from v2 | N + M | — |
+| D13 | G1 details not fixed by §11.1: residual definition (paper: raw (A T̂ − b); ours: divided by diag A), and whether G1 copies the paper's stop-checking-after-C-events rule (§18.4) | M | before E7 |
+| D14 | Audit delay bound: maximum number of steps D an audit solve may take before its label is used, enforced by a label-independent `maxit` (§18.1, Tu & Giesecke Prop. B.15) | N + M | before E14 |
+
+---
+
+## 18 · Implementation notes from the literature survey
+
+Distilled from the eight survey study guides (`grand_guide.pdf`; each guide used only its provided PDF). Paper numbering is the paper's own. Items marked UNSURE are the guide author's inference and need the named checker (§2). Nothing here changes §5 or decides anything in §17.
+
+### 18.1 Lemma 1 sources (G5): exact statements and what they force on the code
+**Gibbs & Candès (arXiv 2106.00170v3).** Update (2): α_{t+1} = α_t + γ(α − err_t), err_t = 1[S_t > Q̂_t(1 − α_t)]. Standing convention: α₁ ∈ [0,1], Q̂_t non-decreasing, Q̂_t(x) = −∞ for x < 0 and +∞ for x > 1.
+- Lemma 4.1: α_t ∈ [−γ, 1 + γ] for all t, almost surely.
+- Prop. 4.1: |(1/T) Σ err_t − α| ≤ (max{α₁, 1 − α₁} + γ)/(Tγ), for **every** sequence. It is deterministic telescoping, so it holds for any proposer and for S⁺ in place of S. It allows S_t and Q̂_t to change every step (retraining OK).
+- Thms 4.1/4.2 (HMM, fixed score, spectral gap) do **not** apply to TwinHeat. Never quote them as guarantees. The paper's γ = 0.005 is not ours (D4).
+- Code consequences: q = ∞ when α_k ≤ 0 ⇒ err = 0 (matches). When α_k ≥ 1 the paper's set is empty ⇒ err = 1; §8.2's q = 0 gives err = 1[S⁺ > 0] (D7). **Testable invariant for `gate/aci_audit.py`:** on the audit stream, α_k never leaves [−γ, 1 + γ], and |mean(err) − α| ≤ C/(γ n_a) after every audit, for any adversarial 0/1 sequence. This is exact, not statistical, so it can be a hard unit test.
+
+**Tu & Giesecke (arXiv 2605.17705v2).** Dictionary: their R_t ↔ our A_t, π ↔ p, ℓ_t ↔ err_t, "revealed round" ↔ audited step. Level update (5): α_{t+1} = α_t + γ R_t (α − ℓ_t), i.e. only on revealed rounds.
+- Assumption 5.8 (MCAR): P(R_t = 1 | ℋ_t) = π, with ℋ_t = ℱ_t ∨ σ(Y_t). ℋ_t contains the **committed design and its label**, so a proposer that sees A_t and then edits x_t breaks it. Showing **past** audit outcomes is allowed (they are in the filtration).
+- Thm 5.9 eq. (10), w.h.p., revealed rounds: −(1 − α + γα)/(γ|ℛ_T|) ≤ mean_{ℛ_T} ℓ_t − α ≤ (α + γ(1 − α) + γ log(1/δ)/(8ζ))/(γ|ℛ_T|). Eq. (11), **in expectation**, all rounds: same form with |ℛ_T| → πT and log(1/δ) → 1. The high-probability all-step version in §8.2 is ours.
+- Assumption 5.6 (fallback feasibility, ζ) exists only because W-TQA replaces the trivial set. TwinHeat does not need it **as long as q = ∞ is kept** when α_k ≤ 0. Do not "finitize" q (e.g. cap it at the window maximum) without re-deriving Lemma 1.
+- Prop. 5.7: without an assumption on the reveal mechanism the all-round miss rate is not identifiable. Prop. B.14: selection bias −(1/(πT)) Σ_t Cov(p_t, ℓ_t). This is the G4 effect and the reason q never sees flagged labels.
+- Prop. B.15 (delay ≤ D): constants γα, γ(1 − α) become Dγα, Dγ(1 − α); arrival time may depend on the label, but a label arriving after D is **discarded**, and the discard must itself be MCAR. Certified audits stop at label-dependent times, so every audit needs a label-independent iteration cap (D14).
+- Stated for a **fixed** score; time-varying (retrained) scores are not covered (UNSURE). Safe rule: retrain only on data available before step t, never using A_t.
+- G7: p_t depends on (s_t, σ_t, g_t), so MCAR with constant π fails; the IPW update is analysed in neither paper.
+
+### 18.2 Split conformal (G2, G3) — Angelopoulos & Bates (arXiv 2107.07511v6)
+- q̂ = the ⌈(n+1)(1−α)⌉/n empirical quantile of n calibration scores ("higher" interpolation). If α < 1/(n+1), q̂ = ∞. Under exchangeability: 1 − α ≤ P(Y ∈ C(X)) ≤ 1 − α + 1/(n+1) (upper bound needs continuous scores). The plain (1 − α) quantile slightly under-covers (D8).
+- Coverage conditional on one calibration set ~ Beta(n + 1 − l, l), l = ⌊(n+1)α⌋. **Test for G2/G3 code:** repeatedly re-split cached scores into cal/val; mean coverage ≈ 1 − l/(n+1) and the histogram matches the beta-binomial law. A larger deviation is a bug.
+- Our S = |T̂_peak − T_peak|/s is the paper's "uncertainty scalar" score |y − f̂(x)|/u(x); ensemble spread is a valid u. Validity does not depend on s_t's quality; tightness does.
+- G2's guarantee lapses once the proposer leaves p₀ **or** the model is retrained (old cal scores used a different score function).
+- G3 (Thm 3, covariate shift) needs w = dP_test/dP known and P_{Y|X} fixed (true: deterministic solver). Weights are exact only for P1, and the theorem is for one test point, not an adaptive sequence.
+- Marginal coverage allows all errors to sit in one group; per-group calibration (Prop. 1) still needs i.i.d. data. This motivates G6.
+
+### 18.3 MultiValid Predictor (G6) — Bastani et al. (arXiv 2206.01067v1)
+- Protocol per round: learner fixes score s_t ∈ [0,1]; adversary picks (x_t, y_t); learner sees x_t (not y_t) and outputs q_t; learner sees y_t. Map our unbounded score with **S̃ = S/(1 + S)** (monotone, exact inverse q = q̃/(1 − q̃); not clipping, so §0 rule 5 is respected).
+- Buckets B_m(i) = [(i−1)/m, i/m), last one closed; grid 𝒫^{rm}. f(n) = √((n+1) log^{1+ε}(n+2)), K_ε = Σ_{n≥0} 1/f(n)², η = √(ln(|𝒢|m)/(2K_ε|𝒢|m)). Per round MVP finds a sign change i* and **randomises** between i*/m − 1/(rm) and i*/m.
+- Thm 3.1, **in expectation** (not w.h.p.): on each (group, bucket) subsequence of length n, |coverage − (1 − δ)| ≤ c_exp·f(n)/n with c_exp ≤ √(4K_ε|𝒢|m ln(|𝒢|m)) + ρT. Groups may intersect; one ACI per group is not possible with intersecting groups (paper Sec. 4.3.2).
+- **Smoothness (ρ, rm) fails** for a deterministic solver (score given x is a point mass). Remark 3.1: add small continuous noise to the score. Noise must be drawn by the server **after commit** and hidden, like the coin. Uniform noise of width w gives ρ ≤ 1/(rmw) (guide's arithmetic, UNSURE).
+- Feed MVP **only audited steps** (B8). MVP's own randomisation is drawn once per committed design; a `query` preview must not re-roll it (D9).
+- Gaps the week-7 per-group proof must close: transfer from audited steps to all steps; S⁺ depends on q_t through early stopping (Thm 3.1 assumes the score is independent of the learner's randomised q_t); expectation vs. high probability; two-sided per-bucket result → one-sided per-group accepted-error rate.
+- Name clash: MVP's m (buckets) ≠ our m (hottest cells, default 64); MVP's δ = our α; MVP's α(·) is a function.
+
+### 18.4 G1 baseline and related points — DeepOHeat-v2 (arXiv 2608.16080v1)
+- Algorithm 1: r_hot(T̂) = (1/m) Σ_{y∈S_m} |r(y)| with r = A T̂ − b (**not** divided by diag A) over the m predicted-hottest cells; push r_hot into a FIFO window 𝒲 for **every** proposal; flag if r_hot > Q_{1−f}(𝒲). The threshold is label-free and controls the **flag rate**, not the error rate. Paper values (Table III): |𝒲| = 100, m = 100, f_target = 0.30, ΔN = 50; checking stops after C = 3 retraining events. In TwinHeat, G1 uses the shared m (§8.1) and f tuned to budget (§11.1); open points in D13. Canonical text: `docs/refs/deepoheat_v2_alg1.txt`.
+- Energy-form loss ½θᵀAθ − bᵀθ has Hessian A (condition κ₂(A)); squared residual has Hessian 2A² (condition κ₂(A)²); same minimiser. In network weights only an upper bound holds (needs full-rank Jacobian, near a good fit). Ablation row only (§12).
+- Prop. 7 already bounds the hotspot error using A⁻¹ ≥ 0, but needs hotspot coincidence and row diagonal dominance of A⁻¹ and is "numerically loose". Record it in `docs/novelty_search.md`; Lemma 2 needs neither assumption.
+
+### 18.5 Solver and certificate (Lemma 2) — Shewchuk 1994, Varah 1975, Meurant & Tichý 2018
+- **Two different kappas.** κ₂(A) = λ_max/λ_min sets PCG **speed**; κ̂ ≥ ‖A⁻¹‖∞ (Lemma 2a) sets the **error bound**. Only κ̂ enters the certificate.
+- **PCG (Shewchuk).** CG minimises ‖e‖_A over the Krylov space; ‖e_i‖_A ≤ 2((√κ − 1)/(√κ + 1))^i ‖e_0‖_A (Eq. 52), so at most ⌈½√κ ln(2/ε)⌉ iterations for an ε reduction in the A-norm (worst case, exact arithmetic; real runs are usually faster). For PCG, κ = κ(M⁻¹A) (UNSURE, guide's derivation) and **M must be SPD**: a V-cycle preconditioner needs symmetric smoothing and R = Pᵀ (D10). Not a certificate: wrong norm, needs λ_min, λ_max and the unknown ‖e_0‖_A.
+- **Residual drift.** The recursive residual r ← r − αAp drifts in floating point and can give a "false zero residual"; conjugacy is lost too. Hence the §8.4 rule: the FP32 recursive residual is only a trigger; certify on b − Ax recomputed in FP64 plus the derived margin.
+- **Warm starts.** x₀ = μ lowers ‖e_0‖, not the rate. A stopping test relative to ‖r₀‖ throws the head start away; use ‖b‖ (as §9.1 does) or the absolute certificate κ̂‖r_k‖∞ ≤ τ_v.
+- **Recommended extra test (not an invariant):** ‖A − Aᵀ‖ = 0 after assembly, alongside B1 (catches one-sided Dirichlet or g_lm Δx² terms).
+- **Varah.** For strictly row-diagonally-dominant A, ‖A⁻¹‖∞ ≤ 1/α, α = min_k(|a_kk| − Σ_{j≠k}|a_kj|). For an M-matrix this is exactly Lemma 2(a) with z = 1 ((A1)_k is row k's margin), i.e. the "Varah bound" column of §8.6. **Unit test for `certify/kappa.py`:** with z = 1, κ̂ equals 1/α to rounding. On the v1 plate α > 0 (margin H_P Δx², plus 2G_P at Dirichlet faces), but small, so the bound is loose. On the 4-layer board h₂ = h₃ = 0, so L2/L3 rows away from a heat-sunk edge have margin exactly 0: α = 0, Varah gives nothing, and z ≈ A⁻¹1 is required. Whether Varah's block Theorem 2 works with per-column 4×4 blocks is untested (UNSURE). That the general-z form of Lemma 2(a) is new is UNVERIFIED (may be classical M-matrix theory).
+- **Meurant & Tichý.** Thm 1: ‖x − x_k‖_A² < (‖r_k‖²/μ)(‖r_k‖²/‖p_k‖²), valid only for a **guaranteed** 0 < μ ≤ λ_min (of the preconditioned matrix under PCG), exact arithmetic; decreasing in k. The practical version with a Ritz estimate μ_k is **not a bound** (Ritz values over-estimate λ_min; it underestimates early on) and must never be used as a certificate (B7). Delayed variants give iterate k's bound only at k + d. Converting A-norm to per-cell kelvin needs a rigorous λ_min again. The fallback does not cover the two failure cases §7.2 names: central-differenced advection is non-symmetric, temperature-dependent conductivity is nonlinear (D11).
+
+### 18.6 Credit additions (extends §1 "what we do NOT claim")
+Varah's ‖A⁻¹‖∞ ≤ 1/α and therefore the z = 1 case of Lemma 2(a) · DeepOHeat-v2's use of A⁻¹ ≥ 0 in an error bound (Prop. 7) · MVP, threshold-calibrated multivalid coverage, the s/(1+s) map and the noise trick (Bastani et al.) · split, weighted and group-balanced conformal (Angelopoulos & Bates summarise these; the main theorem is Vovk et al.'s) · PCG theory, warm-start advice, periodic residual recomputation (Shewchuk; not in §16.1, add it there before citing).
