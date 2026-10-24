@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata as md
+import os
 import re
 import shutil
 import subprocess
@@ -52,11 +53,32 @@ def fail(msg: str) -> None:
     print(f"  FAIL  {msg}")
 
 
+def ruff_version() -> str | None:
+    """Version of the ruff command, or None. pip installs ruff as a Python module and
+    conda-forge as a standalone executable (no pip metadata), so try both."""
+    prefix = Path(sys.prefix)
+    env_dirs = [str(prefix / sub) for sub in ("Scripts", "Library/bin", "bin")]
+    search = os.pathsep.join([*env_dirs, os.environ.get("PATH", "")])
+    candidates = [[sys.executable, "-m", "ruff"]]
+    exe = shutil.which("ruff", path=search)
+    if exe:
+        candidates.append([exe])
+    for cmd in candidates:
+        try:
+            out = subprocess.run(
+                [*cmd, "--version"], capture_output=True, text=True, timeout=60, check=True
+            ).stdout.strip()
+        except (subprocess.SubprocessError, OSError):
+            continue
+        return out.removeprefix("ruff").strip()
+    return None
+
+
 def installed_version(dist: str) -> str | None:
     try:
         return md.version(dist)
     except md.PackageNotFoundError:
-        return None
+        return ruff_version() if dist == "ruff" else None
 
 
 def check_imports() -> None:
@@ -68,14 +90,11 @@ def check_imports() -> None:
             fail(f"import {module}: {type(exc).__name__}: {exc}")
             continue
         print(f"  ok    {module:<11} {installed_version(dist) or 'version unknown'}")
-    try:  # ruff is a command-line tool, not an import
-        out = subprocess.run(
-            [sys.executable, "-m", "ruff", "--version"],
-            capture_output=True, text=True, timeout=60, check=True,
-        ).stdout.strip()
-        print(f"  ok    ruff        {out}")
-    except (subprocess.SubprocessError, OSError) as exc:
-        fail(f"ruff: {type(exc).__name__}: {exc}")
+    version = ruff_version()  # ruff is a command-line tool, not an import
+    if version is None:
+        fail("ruff: no working `python -m ruff` or `ruff` executable found")
+    else:
+        print(f"  ok    ruff        {version}")
 
 
 def check_pins() -> None:
