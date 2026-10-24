@@ -16,3 +16,12 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+
+# LaTeX build files (report/)
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
