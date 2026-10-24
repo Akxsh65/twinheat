@@ -1,0 +1,93 @@
+# TwinHeat-Board v2.0: 4-layer main model (CLAUDE.md §7). Same conventions as spec_v1.yaml.
+#
+# Via convention: we use ~190 K/W per via for a 1.6 mm board (our formula, CLAUDE.md §7.3),
+# not the 407 K/W an online calculator gives with another convention.
+spec_version: "2"
+
+meta:
+  name: TwinHeat-Board
+  version: "2.0"
+  description: 4-layer 100x100 mm board, 256x256x4 = 262,144 unknowns
+
+conventions:
+  # TODO(D3): decided 2026-10-24 (docs/decisions.md): the missing outer dielectric term is 0, as
+  # written in CLAUDE.md §7.2. Revisit here, and in SpecV2.in_plane_conductance, if N changes it.
+  outer_dielectric_term: zero
+
+geometry:
+  L: {value: 0.100, unit: m, range: [0.100, 0.100], source: "CLAUDE.md §6.3"}
+  N: {value: 256, unit: count, range: [256, 256], source: "CLAUDE.md §7.3", note: "dx = 0.390625 mm"}
+  n_layers: {value: 4, unit: count, range: [4, 4], source: "CLAUDE.md §7.3"}
+
+materials:
+  k_fr4_xy: {value: 0.81, unit: "W/(m·K)", range: [0.81, 1.06], source: "CLAUDE.md §6.3", note: "used by §7.2"}
+  k_fr4_z: {value: 0.29, unit: "W/(m·K)", range: [0.29, 0.343], source: "CLAUDE.md §6.3", note: "used by §7.2"}
+  k_cu: {value: 390.0, unit: "W/(m·K)", range: [385.0, 400.0], source: "CLAUDE.md §6.3", note: "used by §7.2"}
+
+vias:
+  drill_diameter: {value: 0.3e-3, unit: m, range: [0.3e-3, 0.3e-3], source: "CLAUDE.md §7.2"}
+  plating_thickness: {value: 25.0e-6, unit: m, range: [25.0e-6, 25.0e-6], source: "CLAUDE.md §7.2"}
+
+stack:
+  layers:
+    - name: L1
+      role: top signal layer; chips (heat sources); convective face h_top
+      t_cu: {value: 35.0e-6, unit: m, range: [35.0e-6, 70.0e-6], source: "CLAUDE.md §7.1", note: "35 or 70 um"}
+      phi: {value: [0.10, 0.60], unit: "1", range: [0.10, 0.60], dist: range, source: "CLAUDE.md §7.4", note: "painted coverage; L1 copper as §6.5 (total mean phi)"}
+    - name: L2
+      role: ground plane with cut-outs
+      t_cu: {value: 35.0e-6, unit: m, range: [35.0e-6, 35.0e-6], source: "CLAUDE.md §7.1"}
+      phi: {value: [0.7, 1.0], unit: "1", range: [0.7, 1.0], dist: range, source: "CLAUDE.md §7.1"}
+    - name: L3
+      role: split power plane
+      t_cu: {value: 35.0e-6, unit: m, range: [35.0e-6, 35.0e-6], source: "CLAUDE.md §7.1"}
+      phi: {value: [0.5, 1.0], unit: "1", range: [0.5, 1.0], dist: range, source: "CLAUDE.md §7.1"}
+    - name: L4
+      role: bottom signal layer; convective face h_bot
+      t_cu: {value: 35.0e-6, unit: m, range: [35.0e-6, 70.0e-6], source: "CLAUDE.md §7.1", note: "UNSURE: the §7.1 table says 35 um but §7.4 says outer copper is 1 or 2 oz; the range follows §7.4"}
+      phi: {value: [0.05, 0.40], unit: "1", range: [0.05, 0.40], dist: range, source: "CLAUDE.md §7.4", note: "painted coverage 5-40 %"}
+  d12: {value: 0.20e-3, unit: m, range: [0.20e-3, 0.20e-3], source: "CLAUDE.md §7.1", note: "prepreg below L1"}
+  d23: {value: 1.06e-3, unit: m, range: [1.06e-3, 1.06e-3], source: "CLAUDE.md §7.1", note: "core below L2"}
+  d34: {value: 0.20e-3, unit: m, range: [0.20e-3, 0.20e-3], source: "CLAUDE.md §7.1", note: "prepreg below L3"}
+
+convection:
+  natural_training: {value: [5.0, 15.0], unit: "W/(m²·K)", range: [5.0, 15.0], dist: range, source: "CLAUDE.md §6.3", note: "per face; sampler as §6.5"}
+  forced_training: {value: [25.0, 50.0], unit: "W/(m²·K)", range: [25.0, 50.0], dist: range, source: "CLAUDE.md §6.3"}
+
+sampler:
+  l2_cutout_count: {value: [0, 3], unit: count, range: [0, 3], dist: uniform_int, source: "CLAUDE.md §7.4", note: "rectangular cut-outs"}
+  l3_split_rect_count: {value: [2, 3], unit: count, range: [2, 3], dist: uniform_int, source: "CLAUDE.md §7.4"}
+  thermal_via_probability: {value: 0.6, unit: "1", range: [0.6, 0.6], source: "CLAUDE.md §7.4", note: "via array under each chip"}
+  thermal_via_density: {value: [0.2, 1.0], unit: "via/mm²", range: [0.2, 1.0], dist: uniform, source: "CLAUDE.md §7.4"}
+  background_via_density: {value: [0.0, 0.05], unit: "via/mm²", range: [0.0, 0.05], dist: range, source: "CLAUDE.md §7.4"}
+  outer_oz: {value: [1.0, 2.0], unit: oz, range: [1.0, 2.0], dist: set, source: "CLAUDE.md §7.4", note: "probabilities not given"}
+  inner_oz: {value: 1.0, unit: oz, range: [1.0, 1.0], source: "CLAUDE.md §7.4"}
+  chip_count: {value: [1, 4], unit: count, range: [1, 4], dist: uniform_int, source: "CLAUDE.md §6.5", note: "§7.4: chips 1-4 on L1"}
+  chip_power: {value: [0.1, 3.0], unit: W, range: [0.1, 3.0], dist: loguniform, source: "CLAUDE.md §6.5", note: "§7.4: 0.1-3 W each"}
+  total_power_max: {value: 6.0, unit: W, range: [6.0, 6.0], source: "CLAUDE.md §7.4"}
+  design_fraction: {value: 0.5, unit: "1", range: [0.5, 0.5], source: "CLAUDE.md §7.4", note: "half of all training boards come from the 36-dim design space"}
+  design_space:
+    dimension: {value: 36, unit: count, range: [36, 36], source: "CLAUDE.md §7.4"}
+    chip_position_dims: {value: 8, unit: count, range: [8, 8], source: "CLAUDE.md §7.4", note: "4 chip positions"}
+    copper_rect_count: {value: 6, unit: count, range: [6, 6], source: "CLAUDE.md §7.4", note: "copper rectangles on L1"}
+    copper_rect_dims: {value: 24, unit: count, range: [24, 24], source: "CLAUDE.md §7.4", note: "6 x (x, y, w, h)"}
+    via_density_dims: {value: 4, unit: count, range: [4, 4], source: "CLAUDE.md §7.4", note: "via density under each chip"}
+
+boundary:
+  n_dirichlet_edges: {value: [0, 1, 2], unit: count, range: [0, 2], dist: categorical, p: [0.5, 0.3, 0.2], source: "CLAUDE.md §6.6", note: "edges follow §6.6 and apply to all layers"}
+  dirichlet_theta: {value: 0.0, unit: K, range: [0.0, 0.0], source: "CLAUDE.md §6.6"}
+  edge_choice: {value: uniform_opposite_or_adjacent_allowed, unit: text, source: "CLAUDE.md §6.6"}
+
+envelope:
+  theta_max: {value: 100.0, unit: K, range: [100.0, 100.0], source: "CLAUDE.md §7.4", note: "linear rescale"}
+
+ood:
+  names: {value: [ood_1, ood_2, ood_3, ood_4, ood_5, ood_6, ood_7, ood_bottom_chips, ood_3oz, ood_dense_vias], unit: text, source: "CLAUDE.md §7.4", note: "ood_1..ood_7 are OOD-1..7 of §6.7 (identifiers chosen here); the last three are named in §7.4"}
+  samples_per_set: {value: 500, unit: count, range: [500, 500], source: "CLAUDE.md §7.4"}
+  dense_via_threshold: {value: 1.0, unit: "via/mm²", range: [1.0, 1.0], source: "CLAUDE.md §7.4", note: "ood_dense_vias uses densities above this"}
+
+splits:
+  train: {value: 6000, unit: count, range: [6000, 6000], source: "CLAUDE.md §7.4"}
+  val: {value: 1000, unit: count, range: [1000, 1000], source: "CLAUDE.md §7.4"}
+  cal: {value: 1000, unit: count, range: [1000, 1000], source: "CLAUDE.md §7.4"}
+  test: {value: 1000, unit: count, range: [1000, 1000], source: "CLAUDE.md §7.4"}
