@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.0",
+  "id": "id-000001",
+  "seed": 1,
+  "mode": "id",
+  "stack": {
+    "outer_oz": 1,
+    "inner_oz": 1,
+    "k_fr4_xy": 0.81
+  },
+  "layers": [
+    {
+      "layer": 1,
+      "shapes": [
+        {
+          "type": "rect",
+          "x0": 10,
+          "y0": 20,
+          "w": 30,
+          "h": 12
+        },
+        {
+          "type": "disc",
+          "cx": 50,
+          "cy": 50,
+          "r": 6
+        },
+        {
+          "type": "trace",
+          "points": [
+            [
+              10,
+              10
+            ],
+            [
+              40,
+              10
+            ],
+            [
+              40,
+              30
+            ]
+          ],
+          "width": 4
+        }
+      ]
+    },
+    {
+      "layer": 2,
+      "plane": true,
+      "cutouts": [
+        {
+          "type": "rect",
+          "x0": 70,
+          "y0": 5,
+          "w": 12,
+          "h": 8
+        }
+      ]
+    },
+    {
+      "layer": 3,
+      "split_rects": [
+        {
+          "type": "rect",
+          "x0": 0,
+          "y0": 0,
+          "w": 50,
+          "h": 100
+        },
+        {
+          "type": "rect",
+          "x0": 50,
+          "y0": 0,
+          "w": 50,
+          "h": 100
+        }
+      ]
+    },
+    {
+      "layer": 4,
+      "shapes": [
+        {
+          "type": "rect",
+          "x0": 5,
+          "y0": 60,
+          "w": 25,
+          "h": 25
+        }
+      ]
+    }
+  ],
+  "chips": [
+    {
+      "x0": 40,
+      "y0": 40,
+      "w": 10,
+      "h": 8,
+      "P": 1.2,
+      "side": "top"
+    }
+  ],
+  "via_arrays": [
+    {
+      "x0": 40,
+      "y0": 40,
+      "w": 10,
+      "h": 8,
+      "density_per_mm2": 0.5
+    }
+  ],
+  "background_via_density_per_mm2": 0.02,
+  "convection": {
+    "h_top": 10.0,
+    "h_bot": 8.0,
+    "forced_zone": null
+  },
+  "dirichlet_edges": [
+    "W"
+  ],
+  "design_vector": null
+}

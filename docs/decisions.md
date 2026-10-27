@@ -14,6 +14,31 @@ points to. Changing CLAUDE.md itself needs a PR plus a line in this file.
 
 Open. Owner M, due week 2. Placeholders live in `config/design_task.yaml` until then.
 
+- **Sampler v0 behaviour (2026-10-24, M):** `design_board(x)` raises `InfeasibleDesignError` when chips break
+  the §6.5 gap or edge margin, and `sample_board(seed, "design")` draws x ~ U[0,1]³⁶ by rejection. p₀ is
+  therefore uniform on the **feasible** part of the cube, not the whole cube. That matters for G3's "exact"
+  weights for P1 (§7.4), and must be revisited when D2 is fixed.
+
+## Sampler v0 defaults (2026-10-24, UNSURE, M to confirm)
+
+CLAUDE.md §6.5 and §7.4 leave these open. They live in `config/spec_v2.yaml` → `sampler.v0_defaults`, so
+changing one is a YAML edit plus a line here. Records generated before a change are a different version.
+- Outer copper 1 / 2 oz with p = 0.5 / 0.5. Background via density uniform on [0, 0.05] vias/mm².
+- L2: 0–3 cut-outs, sides U[5, 40] mm, centre uniform, clipped; resample until φ₂ ≥ 0.7.
+- L3: one full cut at U[30, 70] mm (x or y, p = 0.5); for 3 rectangles a perpendicular cut splits one half.
+  The pieces tile the board (φ₃ = 1).
+- L4: 1–8 regions of the §6.5 families; resample until φ₄ ∈ [0.05, 0.40].
+- Manhattan traces: start uniform, first direction H/V with p = 0.5, each later segment turns ±90° with
+  p = 0.5; points clipped to the board. **Trace copper = points within width/2 of a segment (capsule);
+  `data/raster.py` must use the same rule.**
+- Chips: long side along x or y with p = 0.5; lower-left uniform inside the 3 mm margin; one try = the whole
+  layout, 100 tries, then resample the count. Forced zone: lower-left uniform so the zone fits on the board.
+- Coverage checks use a 256 × 256 point grid (the §6.4 4 × 4 rule at N = 64) until `data/raster.py`
+  exists. "Otherwise resample" loops stop after 1,000 tries and raise. Record geometry is rounded to
+  1e-3 mm so the 8 symmetries round-trip exactly.
+- `transform_record` keeps `design_vector` as provenance (it describes the board before the symmetry) and
+  marks the net symmetry in the id as `-sym<k>`.
+
 ## D3 · Outer-layer G_l dielectric term
 
 - **Decision (2026-10-24):** the missing outer dielectric term is 0, as written in CLAUDE.md §7.2.

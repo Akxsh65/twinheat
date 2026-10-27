@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "type": "iterate",
+  "id": "d-2",
+  "k": 40,
+  "theta": "b1EtUEFQZUg6U7lE/E2WTftNWlDMTE49YE20UBZMoUtEPIBQO02KR4dIdEYgUYBI7UH+RcRDeUWtUdpQYk0BUxlAjlB8StlQ3lBkTbRTuE9sTxtNuVAuUJ0cOTlzTS5O1E3XQxZPMD8xT4BPo1J6OgVM7lPpTLVBdj2nTNdOIUg=",
+  "cert_k": 0.08,
+  "shape": [
+    3,
+    4,
+    4
+  ],
+  "t_server_ns": 81234567990123
+}

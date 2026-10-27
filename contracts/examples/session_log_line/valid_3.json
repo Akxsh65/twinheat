@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "participant": "P107",
+  "condition": "residual",
+  "t_ms": 812,
+  "action": "query",
+  "design_hash": null,
+  "server_decision": "preview"
+}

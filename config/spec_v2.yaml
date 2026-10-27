@@ -66,6 +66,24 @@ sampler:
   chip_power: {value: [0.1, 3.0], unit: W, range: [0.1, 3.0], dist: loguniform, source: "CLAUDE.md §6.5", note: "§7.4: 0.1-3 W each"}
   total_power_max: {value: 6.0, unit: W, range: [6.0, 6.0], source: "CLAUDE.md §7.4"}
   design_fraction: {value: 0.5, unit: "1", range: [0.5, 0.5], source: "CLAUDE.md §7.4", note: "half of all training boards come from the 36-dim design space"}
+  # Sampler v0 defaults: CLAUDE.md does not fix these. UNSURE, M to confirm (docs/decisions.md,
+  # "Sampler v0 defaults"). The source names the section that leaves the gap.
+  v0_defaults:
+    outer_oz_p: {value: [0.5, 0.5], unit: "1", range: [0.5, 0.5], source: "CLAUDE.md §7.4", note: "default: p for outer_oz = [1, 2]; §7.4 gives no probabilities"}
+    background_via_density_dist: {value: uniform, unit: text, source: "CLAUDE.md §7.4", note: "default: uniform over sampler.background_via_density"}
+    l2_cutout_side: {value: [5.0, 40.0], unit: mm, range: [5.0, 40.0], dist: uniform, source: "CLAUDE.md §7.4", note: "default: as the §6.5 rect (sides uniform, centre uniform, clipped to the board); resample if phi_2 < 0.7"}
+    l3_split_position: {value: [30.0, 70.0], unit: mm, range: [30.0, 70.0], dist: uniform, source: "CLAUDE.md §7.4", note: "default: full-board cut; a third rect comes from a perpendicular cut of one half; pieces tile the board (phi_3 = 1)"}
+    l3_split_axis_x_probability: {value: 0.5, unit: "1", range: [0.5, 0.5], source: "CLAUDE.md §7.4", note: "default: p that the first cut is at constant x"}
+    l4_region_count: {value: [1, 8], unit: count, range: [1, 8], dist: uniform_int, source: "CLAUDE.md §7.4", note: "default: §6.5 shape families and sizes; resample until phi_4 in L4 phi range"}
+    chip_long_axis_x_probability: {value: 0.5, unit: "1", range: [0.5, 0.5], source: "CLAUDE.md §6.5", note: "default: p that a chip's long side runs along x"}
+    chip_position: {value: lower_left_uniform_inside_edge_margin, unit: text, source: "CLAUDE.md §6.5", note: "default: one try = the whole layout; chip_placement_max_tries tries, then resample the count"}
+    trace_first_horizontal_probability: {value: 0.5, unit: "1", range: [0.5, 0.5], source: "CLAUDE.md §6.5", note: "default: start point uniform over the board"}
+    trace_turn_ccw_probability: {value: 0.5, unit: "1", range: [0.5, 0.5], source: "CLAUDE.md §6.5", note: "default: every later segment turns +-90 degrees"}
+    trace_cap: {value: capsule, unit: text, source: "CLAUDE.md §6.4", note: "default: copper = points within width/2 of a segment; data/raster.py must use the same rule"}
+    forced_zone_position: {value: lower_left_uniform_inside_board, unit: text, source: "CLAUDE.md §6.5", note: "default"}
+    coverage_grid_points: {value: 256, unit: count, range: [256, 256], source: "CLAUDE.md §6.4", note: "points per side for the sampler's coverage check = N_v1 (64) x 4 supersamples, points at (i + 0.5)/256 * L; replaced by data/raster.py in Phase 1"}
+    resample_max_tries: {value: 1000, unit: count, range: [1000, 1000], source: "CLAUDE.md §6.5", note: "default: cap on 'otherwise resample' loops; exceeding it raises"}
+    geometry_resolution: {value: 1.0e-3, unit: mm, range: [1.0e-3, 1.0e-3], source: "CLAUDE.md §10.1", note: "default: record geometry is rounded to this grid so symmetries round-trip exactly"}
   design_space:
     dimension: {value: 36, unit: count, range: [36, 36], source: "CLAUDE.md §7.4"}
     chip_position_dims: {value: 8, unit: count, range: [8, 8], source: "CLAUDE.md §7.4", note: "4 chip positions"}

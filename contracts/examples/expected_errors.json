@@ -1,0 +1,57 @@
+{
+  "audit_log_row": {
+    "invalid_1": "$.gate",
+    "invalid_2": "$.p_t",
+    "invalid_3": "$.err"
+  },
+  "batch_progress": {
+    "invalid_1": "$.stage_ms",
+    "invalid_2": "$.done[0]",
+    "invalid_3": "$.designs_per_s"
+  },
+  "board_record": {
+    "invalid_1": "$.schema_version",
+    "invalid_2": "$.layers[0].shapes[0]",
+    "invalid_3": "$.design_vector"
+  },
+  "design": {
+    "invalid_1": "$",
+    "invalid_2": "$.record",
+    "invalid_3": "$"
+  },
+  "error": {
+    "invalid_1": "$.message",
+    "invalid_2": "$.type",
+    "invalid_3": "$"
+  },
+  "hardware_record": {
+    "invalid_1": "$.steady_state.criterion",
+    "invalid_2": "$.emissivity",
+    "invalid_3": "$.timestamp"
+  },
+  "iterate": {
+    "invalid_1": "$.k",
+    "invalid_2": "$.shape[0]",
+    "invalid_3": "$.theta"
+  },
+  "pred": {
+    "invalid_1": "$.decision",
+    "invalid_2": "$.shape",
+    "invalid_3": "$.mu"
+  },
+  "query": {
+    "invalid_1": "$.type",
+    "invalid_2": "$",
+    "invalid_3": "$.record.chips[0].P"
+  },
+  "session_log_line": {
+    "invalid_1": "$.participant",
+    "invalid_2": "$.action",
+    "invalid_3": "$.design_hash"
+  },
+  "verified": {
+    "invalid_1": "$",
+    "invalid_2": "$.iters",
+    "invalid_3": "$.cert"
+  }
+}

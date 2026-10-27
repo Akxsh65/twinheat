@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "participant": "P01",
+  "condition": "calibrated",
+  "t_ms": 15230.5,
+  "action": "commit",
+  "design_hash": null,
+  "server_decision": "accept"
+}

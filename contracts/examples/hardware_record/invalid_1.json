@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "board_id": "HB1",
+  "record_id": "hw-board-1",
+  "power_per_resistor": [
+    {
+      "ref": "R1",
+      "V": 5.02,
+      "I": 0.198
+    },
+    {
+      "ref": "R2",
+      "V": 5.01,
+      "I": 0.101
+    }
+  ],
+  "ambient_C": 24.6,
+  "camera_frame_id": "frame-0001",
+  "camera_model": "TBD",
+  "emissivity": 0.95,
+  "sensor_readings": [
+    {
+      "id": "NTC1",
+      "x_mm": 30,
+      "y_mm": 30,
+      "T_C": 41.2
+    },
+    {
+      "id": "NTC2",
+      "x_mm": 70,
+      "y_mm": 70,
+      "T_C": 33.9
+    }
+  ],
+  "steady_state": {
+    "criterion": "<0.2 K/min over 5 min",
+    "met": true
+  },
+  "timestamp": "2026-11-20T14:32:05+05:30"
+}

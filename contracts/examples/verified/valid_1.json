@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "type": "verified",
+  "id": "d-2",
+  "theta": "5U6ITONMrUY3RlNCRU1dTfFJokm4TBhNTEgjPRROF0+lR8lRbURTSSlO9U7BTA1MfkLYUUtJVk4mTuBL9EXEUT1EZkSuP9JQmETpRpBLakYnTJxMy0xPSh9KNE+cRDBQk0v5QidQckpPSOdIYEvaUvxPTkk7RihMO06UTt1BOEw=",
+  "cert": 0.09,
+  "iters": 65,
+  "ms": 412.5,
+  "stop_reason": "cert_tau_v",
+  "shape": [
+    4,
+    4,
+    4
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/hardware_record.json",
+  "title": "hardware_record",
+  "description": "One thermal-camera measurement of a fabricated board (CLAUDE.md §10.5, §14). V in volts, I in amperes, temperatures in degC (absolute, not a rise), sensor positions in mm on the board frame of §10.1, timestamp ISO 8601 with time zone.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "board_id", "record_id", "power_per_resistor", "ambient_C", "camera_frame_id",
+    "camera_model", "emissivity", "sensor_readings", "steady_state", "timestamp"
+  ],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "board_id": { "$ref": "#/$defs/id" },
+    "record_id": { "$ref": "#/$defs/id" },
+    "power_per_resistor": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "V", "I"],
+        "properties": {
+          "ref": { "$ref": "#/$defs/id" },
+          "V": { "type": "number", "minimum": 0 },
+          "I": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "ambient_C": { "type": "number" },
+    "camera_frame_id": { "$ref": "#/$defs/id" },
+    "camera_model": { "$ref": "#/$defs/id" },
+    "emissivity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+    "sensor_readings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "x_mm", "y_mm", "T_C"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "x_mm": { "type": "number", "minimum": 0, "maximum": 100 },
+          "y_mm": { "type": "number", "minimum": 0, "maximum": 100 },
+          "T_C": { "type": "number" }
+        }
+      }
+    },
+    "steady_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criterion", "met"],
+      "properties": {
+        "criterion": { "const": "<0.1 K/min over 5 min" },
+        "met": { "type": "boolean" }
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 }
+  }
+}

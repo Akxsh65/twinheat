@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/board_record.json",
+  "title": "board_record",
+  "description": "One board design (CLAUDE.md §10.1). Geometry in mm, origin lower-left, x right, y up; board is 100 x 100 mm (§6.3). Power in W, convection in W/(m^2 K), via density in vias/mm^2. The schema checks structure and physical validity only; training ranges are the runtime OOD rule check (§6.7), so OOD records must validate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "id", "seed", "mode", "stack", "layers", "chips", "via_arrays",
+    "background_via_density_per_mm2", "convection", "dirichlet_edges", "design_vector"
+  ],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "id": { "$ref": "#/$defs/id" },
+    "seed": { "type": "integer", "minimum": 0 },
+    "mode": { "type": "string", "pattern": "^(id|design|ood_[a-z0-9_]+)$" },
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outer_oz", "inner_oz", "k_fr4_xy"],
+      "properties": {
+        "outer_oz": { "type": "number", "exclusiveMinimum": 0 },
+        "inner_oz": { "type": "number", "exclusiveMinimum": 0 },
+        "k_fr4_xy": { "type": "number", "exclusiveMinimum": 0, "description": "W/(m K)" }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": false,
+      "prefixItems": [
+        { "$ref": "#/$defs/signal_layer_1" },
+        { "$ref": "#/$defs/plane_layer_2" },
+        { "$ref": "#/$defs/split_layer_3" },
+        { "$ref": "#/$defs/signal_layer_4" }
+      ]
+    },
+    "chips": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["x0", "y0", "w", "h", "P", "side"],
+        "properties": {
+          "x0": { "$ref": "#/$defs/coord_mm" },
+          "y0": { "$ref": "#/$defs/coord_mm" },
+          "w": { "$ref": "#/$defs/size_mm" },
+          "h": { "$ref": "#/$defs/size_mm" },
+          "P": { "type": "number", "exclusiveMinimum": 0, "description": "W" },
+          "side": { "enum": ["top", "bottom"] }
+        }
+      }
+    },
+    "via_arrays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["x0", "y0", "w", "h", "density_per_mm2"],
+        "properties": {
+          "x0": { "$ref": "#/$defs/coord_mm" },
+          "y0": { "$ref": "#/$defs/coord_mm" },
+          "w": { "$ref": "#/$defs/size_mm" },
+          "h": { "$ref": "#/$defs/size_mm" },
+          "density_per_mm2": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "background_via_density_per_mm2": { "type": "number", "minimum": 0 },
+    "convection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["h_top", "h_bot", "forced_zone"],
+      "properties": {
+        "h_top": { "type": "number", "exclusiveMinimum": 0, "description": "W/(m^2 K)" },
+        "h_bot": { "type": "number", "exclusiveMinimum": 0, "description": "W/(m^2 K)" },
+        "forced_zone": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["x0", "y0", "w", "h", "h_top"],
+          "properties": {
+            "x0": { "$ref": "#/$defs/coord_mm" },
+            "y0": { "$ref": "#/$defs/coord_mm" },
+            "w": { "$ref": "#/$defs/size_mm" },
+            "h": { "$ref": "#/$defs/size_mm" },
+            "h_top": { "type": "number", "exclusiveMinimum": 0, "description": "W/(m^2 K)" }
+          }
+        }
+      }
+    },
+    "dirichlet_edges": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 4,
+      "items": { "enum": ["W", "E", "S", "N"] }
+    },
+    "design_vector": {
+      "type": ["array", "null"],
+      "minItems": 36,
+      "maxItems": 36,
+      "items": { "type": "number", "minimum": 0, "maximum": 1 }
+    }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "coord_mm": { "type": "number", "minimum": 0, "maximum": 100 },
+    "size_mm": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "x0", "y0", "w", "h"],
+      "properties": {
+        "type": { "const": "rect" },
+        "x0": { "$ref": "#/$defs/coord_mm" },
+        "y0": { "$ref": "#/$defs/coord_mm" },
+        "w": { "$ref": "#/$defs/size_mm" },
+        "h": { "$ref": "#/$defs/size_mm" }
+      }
+    },
+    "disc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "cx", "cy", "r"],
+      "properties": {
+        "type": { "const": "disc" },
+        "cx": { "$ref": "#/$defs/coord_mm" },
+        "cy": { "$ref": "#/$defs/coord_mm" },
+        "r": { "$ref": "#/$defs/size_mm" }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "points", "width"],
+      "properties": {
+        "type": { "const": "trace" },
+        "points": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": false,
+            "prefixItems": [{ "$ref": "#/$defs/coord_mm" }, { "$ref": "#/$defs/coord_mm" }]
+          }
+        },
+        "width": { "$ref": "#/$defs/size_mm" }
+      }
+    },
+    "copper_shape": {
+      "$comment": "dispatcher: picks rect, disc or trace by 'type'; each branch sets additionalProperties false",
+      "type": "object",
+      "required": ["type"],
+      "properties": { "type": { "enum": ["rect", "disc", "trace"] } },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "rect" } } }, "then": { "$ref": "#/$defs/rect" } },
+        { "if": { "properties": { "type": { "const": "disc" } } }, "then": { "$ref": "#/$defs/disc" } },
+        { "if": { "properties": { "type": { "const": "trace" } } }, "then": { "$ref": "#/$defs/trace" } }
+      ]
+    },
+    "signal_layer_1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "shapes"],
+      "properties": {
+        "layer": { "const": 1 },
+        "shapes": { "type": "array", "items": { "$ref": "#/$defs/copper_shape" } }
+      }
+    },
+    "plane_layer_2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "plane", "cutouts"],
+      "properties": {
+        "layer": { "const": 2 },
+        "plane": { "type": "boolean" },
+        "cutouts": { "type": "array", "items": { "$ref": "#/$defs/rect" } }
+      }
+    },
+    "split_layer_3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "split_rects"],
+      "properties": {
+        "layer": { "const": 3 },
+        "split_rects": { "type": "array", "items": { "$ref": "#/$defs/rect" } }
+      }
+    },
+    "signal_layer_4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "shapes"],
+      "properties": {
+        "layer": { "const": 4 },
+        "shapes": { "type": "array", "items": { "$ref": "#/$defs/copper_shape" } }
+      }
+    }
+  }
+}

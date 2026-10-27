@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "type": "verified",
+  "id": "d-1",
+  "theta": "1zpAUKhPYUpzR5hKH0ubPatMxlHlUNJAQUzUQr1IykknTRBFpENJTHFNvFDwSDFMAFIWTdhJdU+qUFQ7nE3URaZM0Eh8TIBHz0qFTi1FFk1YSDBG3k4EUCNMPU1rUVJCmUqeTFVQI03YSwVJ+U0qUK1LiUuGUVZIQ0biTH1JTDc=",
+  "cert": 0.6,
+  "iters": 18,
+  "ms": 120.0,
+  "stop_reason": "audit_decided",
+  "shape": [
+    4,
+    4,
+    4
+  ],
+  "t_server_ns": 81234568990123
+}

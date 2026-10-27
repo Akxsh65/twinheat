@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TwinHeat viewer</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #202024;
+        color: #e8e8e8;
+        font: 13px/1.4 system-ui, sans-serif;
+      }
+      #app {
+        position: absolute;
+        inset: 0;
+      }
+      #dev-overlay {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        margin: 0;
+        padding: 6px 8px;
+        max-width: min(60ch, calc(100vw - 32px));
+        white-space: pre-wrap;
+        word-break: break-word;
+        font: 12px/1.35 ui-monospace, monospace;
+        background: rgba(0, 0, 0, 0.6);
+        pointer-events: none;
+      }
+      #controls {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 6px 8px;
+        background: rgba(0, 0, 0, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <pre id="dev-overlay"></pre>
+    <div id="controls">
+      <label for="gap">layer gap</label>
+      <input id="gap" type="range" min="0" step="0.005" />
+      <span id="gap-value"></span>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

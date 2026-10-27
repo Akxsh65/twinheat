@@ -25,3 +25,7 @@ venv/
 *.fls
 *.fdb_latexmk
 *.synctex.gz
+
+# viewer build output and generated demo streams (server/demo_stream.py)
+viewer/dist/
+server/demo/

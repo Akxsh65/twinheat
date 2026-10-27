@@ -1,0 +1,22 @@
+{
+  "name": "twinheat-viewer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "vite": "7.3.7"
+  }
+}

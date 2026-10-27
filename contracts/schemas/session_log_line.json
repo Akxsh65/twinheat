@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/session_log_line.json",
+  "title": "session_log_line",
+  "description": "One JSONL line of a study session log, one action per line (CLAUDE.md §10.6). participant is a code, never a name. t_ms = milliseconds since session start. design_hash is required on commit (null = not applicable). server_decision null = no server decision for this action.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "participant", "condition", "t_ms", "action", "design_hash", "server_decision"],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "participant": { "type": "string", "pattern": "^P[0-9]{2,3}$" },
+    "condition": { "type": "string", "minLength": 1 },
+    "t_ms": { "type": "number", "minimum": 0 },
+    "action": {
+      "enum": ["grab", "move", "release", "brush", "via_stamp", "undo", "request_verify", "accept", "query", "commit"]
+    },
+    "design_hash": { "anyOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+    "server_decision": { "enum": ["preview", "accept", "flag", "audit", null] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "commit" } }, "required": ["action"] },
+      "then": { "properties": { "design_hash": { "$ref": "#/$defs/hash" } } }
+    }
+  ],
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256, lowercase hex" }
+  }
+}

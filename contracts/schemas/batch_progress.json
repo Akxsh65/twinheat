@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/batch_progress.json",
+  "title": "batch_progress",
+  "description": "server -> client throughput panel (CLAUDE.md §10.3). cert in K (null = no certificate); stage_ms in milliseconds; designs_per_s = certified designs per second.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "type", "batch_id", "active_ids", "done", "stage_ms", "designs_per_s"],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "type": { "const": "batch_progress" },
+    "batch_id": { "$ref": "#/$defs/id" },
+    "active_ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+    "done": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "iters", "cert", "reason"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "iters": { "type": "integer", "minimum": 0 },
+          "cert": { "type": ["number", "null"], "minimum": 0 },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "stage_ms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate", "scan", "pcg", "scatter"],
+      "properties": {
+        "gate": { "type": "number", "minimum": 0 },
+        "scan": { "type": "number", "minimum": 0 },
+        "pcg": { "type": "number", "minimum": 0 },
+        "scatter": { "type": "number", "minimum": 0 }
+      }
+    },
+    "designs_per_s": { "type": "number", "minimum": 0 },
+    "t_server_ns": { "$ref": "#/$defs/t_server_ns" }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "t_server_ns": { "type": "integer", "minimum": 0, "description": "server monotonic clock, ns (E11)" }
+  }
+}

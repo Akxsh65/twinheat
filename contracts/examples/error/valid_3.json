@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0",
+  "type": "error",
+  "id": "d-4",
+  "message": "PCG did not converge in maxit"
+}
