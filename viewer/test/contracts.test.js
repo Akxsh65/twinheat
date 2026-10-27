@@ -170,6 +170,28 @@ for (const b64 of ["AA=", "AA*A", "AAAA AAAA", ""]) {
   });
 }
 
+// right length for the shape, wrong characters: only the alphabet check can catch these
+for (const [b64, shape] of [
+  ["AA*=", [1, 1, 1]], ["A=A=", [1, 1, 1]], ["=AA=", [1, 1, 1]], ["AAé=", [1, 1, 1]],
+  ["AAAA*AAA", [1, 1, 3]], ["AAAA-AAA", [1, 1, 3]], ["AAAA AAA", [1, 1, 3]],
+]) {
+  test(`decode rejects bad base64 characters ${JSON.stringify(b64)}`, () => {
+    assert.throws(() => decodeBits(b64, shape), /base64/);
+  });
+}
+
+test("decodeBits matches Node's base64 decoder for every padding case", () => {
+  let seed = 7;
+  const rand = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31) % 65536;
+  for (const [l, n] of [[1, 1], [1, 2], [1, 3], [4, 5], [4, 16]]) {
+    for (const nx of [n, n + 1, n + 2]) {
+      const ref = Uint16Array.from({ length: l * n * nx }, () => rand() & 0x7bff); // finite halves
+      const b64 = Buffer.from(ref.buffer).toString("base64");
+      assert.deepEqual(decodeBits(b64, [l, n, nx]), ref, `[${l}, ${n}, ${nx}]`);
+    }
+  }
+});
+
 for (const bits of [0x7c00, 0xfc00, 0x7e00]) {
   test(`decode rejects non-finite half 0x${bits.toString(16)}`, () => {
     const b64 = Buffer.from([bits & 0xff, bits >> 8]).toString("base64");

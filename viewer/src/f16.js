@@ -3,12 +3,18 @@
 // Array order is [layer, y, x] (CLAUDE.md §0 rule 7); values are temperature rises in K. Rounding
 // is IEEE round-to-nearest-even straight from float64 (no float32 step, so no double rounding);
 // contracts/f16.py implements the same codec and tests/fixtures/f16_vectors.json pins both to
-// identical bits. Runs in Node >= 20 and in the browser (uses atob/btoa, no Float16Array).
+// identical bits. Runs in Node >= 20 and in the browser (btoa to encode; a table-driven base64
+// decoder, since atob plus a charCodeAt loop took ~25 ms per 256 x 256 x 4 field; no Float16Array).
 //
 // Fails loudly (CLAUDE.md §0 rule 5): non-finite values, float16 overflow (|x| >= 65520),
 // malformed shapes and byte-length mismatches all throw.
 
-const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
+const B64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const INVALID = 0xff;
+// one entry per UTF-16 code unit, so any non-alphabet character (including non-ASCII) is caught
+const B64_TABLE = new Uint8Array(65536).fill(INVALID);
+for (let i = 0; i < 64; i++) B64_TABLE[B64_ALPHABET.charCodeAt(i)] = i;
+const LITTLE_ENDIAN_HOST = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
 
 /** Return shape as [layer, y, x] of positive integers, or throw naming it. */
 export function checkShape(shape) {
@@ -81,22 +87,42 @@ export function encode(values, shape) {
   return btoa(bin);
 }
 
-/** Decode base64 float16 into raw bits (Uint16Array, row-major [layer, y, x]). */
+function badBase64(b64) {
+  return new RangeError(`field is not valid padded base64: ${JSON.stringify(String(b64).slice(0, 40))}`);
+}
+
+/** Decode base64 float16 into raw bits (Uint16Array over its own buffer, row-major [layer, y, x]). */
 export function decodeBits(b64, shape) {
   const [l, ny, nx] = checkShape(shape);
-  if (typeof b64 !== "string" || b64.length === 0 || b64.length % 4 !== 0 || !BASE64_RE.test(b64)) {
-    throw new RangeError(`field is not valid padded base64: ${JSON.stringify(String(b64).slice(0, 40))}`);
-  }
-  const bin = atob(b64);
+  if (typeof b64 !== "string" || b64.length === 0 || b64.length % 4 !== 0) throw badBase64(b64);
+  const pad = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+  const nBytes = (3 * b64.length) / 4 - pad;
   const expected = 2 * l * ny * nx;
-  if (bin.length !== expected) {
+  if (nBytes !== expected) {
     throw new RangeError(
-      `field has ${bin.length} bytes but shape [${shape.join(", ")}] needs ${expected} (2 per value)`,
+      `field has ${nBytes} bytes but shape [${shape.join(", ")}] needs ${expected} (2 per value)`,
     );
   }
-  const out = new Uint16Array(expected / 2);
-  for (let i = 0; i < out.length; i++) out[i] = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8);
-  return out;
+  const bytes = new Uint8Array(expected);
+  const body = b64.length - pad; // characters before the padding
+  let bad = 0;
+  let o = 0;
+  for (let i = 0; i < b64.length; i += 4) {
+    const c0 = B64_TABLE[b64.charCodeAt(i)];
+    const c1 = B64_TABLE[b64.charCodeAt(i + 1)];
+    const c2 = i + 2 < body ? B64_TABLE[b64.charCodeAt(i + 2)] : 0;
+    const c3 = i + 3 < body ? B64_TABLE[b64.charCodeAt(i + 3)] : 0;
+    bad |= c0 | c1 | c2 | c3; // INVALID has bits 6-7 set; alphabet values never do
+    const v = (c0 << 18) | (c1 << 12) | (c2 << 6) | c3;
+    bytes[o++] = v >> 16;
+    if (o < expected) bytes[o++] = (v >> 8) & 0xff;
+    if (o < expected) bytes[o++] = v & 0xff;
+  }
+  if (bad & 0xc0) throw badBase64(b64);
+  if (!LITTLE_ENDIAN_HOST) {
+    for (let i = 0; i < expected; i += 2) [bytes[i], bytes[i + 1]] = [bytes[i + 1], bytes[i]];
+  }
+  return new Uint16Array(bytes.buffer);
 }
 
 /** Decode base64 float16 into a Float32Array (exact: every float16 is a float32). */
