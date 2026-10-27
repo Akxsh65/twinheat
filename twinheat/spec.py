@@ -393,6 +393,26 @@ class DesignSpace(_Model):
         return self
 
 
+class SamplerDefaultsV2(_Model):
+    """Sampler v0 choices CLAUDE.md leaves open; UNSURE, M to confirm (docs/decisions.md)."""
+
+    outer_oz_p: Quantity
+    background_via_density_dist: Quantity
+    l2_cutout_side: Quantity
+    l3_split_position: Quantity
+    l3_split_axis_x_probability: Quantity
+    l4_region_count: Quantity
+    chip_long_axis_x_probability: Quantity
+    chip_position: Quantity
+    trace_first_horizontal_probability: Quantity
+    trace_turn_ccw_probability: Quantity
+    trace_cap: Quantity
+    forced_zone_position: Quantity
+    coverage_grid_points: Quantity
+    resample_max_tries: Quantity
+    geometry_resolution: Quantity
+
+
 class SamplerV2(_Model):
     l2_cutout_count: Quantity
     l3_split_rect_count: Quantity
@@ -406,6 +426,7 @@ class SamplerV2(_Model):
     total_power_max: Quantity
     design_fraction: Quantity
     design_space: DesignSpace
+    v0_defaults: SamplerDefaultsV2
 
 
 class EnvelopeV2(_Model):
