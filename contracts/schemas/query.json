@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/query.json",
+  "title": "query",
+  "description": "client -> server while dragging (CLAUDE.md §10.3). Prediction only: NEVER touches gate state, NEVER draws a coin (B8).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "type", "id", "record"],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "type": { "const": "query" },
+    "id": { "$ref": "#/$defs/id" },
+    "record": { "$ref": "board_record.json" }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 }
+  }
+}

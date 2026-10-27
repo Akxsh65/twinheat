@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/error.json",
+  "title": "error",
+  "description": "server -> client error (CLAUDE.md §10.3). id null = the error is not tied to a request id (for example, the incoming message could not be parsed).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "type", "id", "message"],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "type": { "const": "error" },
+    "id": { "type": ["string", "null"], "minLength": 1 },
+    "message": { "type": "string", "minLength": 1 },
+    "t_server_ns": { "$ref": "#/$defs/t_server_ns" }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "t_server_ns": { "type": "integer", "minimum": 0, "description": "server monotonic clock, ns (E11)" }
+  }
+}

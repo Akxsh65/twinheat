@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "board_id": "HB3",
+  "record_id": "hw-board-1",
+  "power_per_resistor": [
+    {
+      "ref": "R1",
+      "V": 5.02,
+      "I": 0.198
+    },
+    {
+      "ref": "R2",
+      "V": 5.01,
+      "I": 0.101
+    }
+  ],
+  "ambient_C": 24.6,
+  "camera_frame_id": "frame-0001",
+  "camera_model": "TBD",
+  "emissivity": 0.95,
+  "sensor_readings": [],
+  "steady_state": {
+    "criterion": "<0.1 K/min over 5 min",
+    "met": false
+  },
+  "timestamp": "2026-11-20T14:32:05+05:30"
+}

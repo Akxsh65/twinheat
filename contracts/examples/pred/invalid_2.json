@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "type": "pred",
+  "id": "d-1",
+  "mu": "p1PLVEVKQkzKSnhGk1P1Rn1OO1bGRkpJOEgDTepP3Uk7SyhHL0/+RdM5zFEXTJRLfEUOTEJTC0hPR4RPpk5gSJ5OWkx+QQdNTlWpTzNPQlImSEFNrEoJUEU6VD5FUZtN0UUrUCpG8k5hTF5MckbfTeBGrVQtTV9LJVJdPztPrk0=",
+  "sd": "NzWXLag6RjWROlQZ/TTCLG86vS+IL006ETEWNPk5gTyqO2g4RzEMN0A1YDUVMgsr7jlSO08WIzc1Njw8gDG6LvA54je4LQc4rDfXN2I2gi78Nc82rTXcNGI2rTSdLzgsHjwNNJ8wVjOgN+Yx0h4xNkQ5fDmkMWwtxzZJNT04iy0=",
+  "B": 0.42,
+  "decision": "accept",
+  "group": "P1",
+  "peak": 74.5,
+  "units": {
+    "mu": "K",
+    "sd": "K",
+    "B": "K",
+    "peak": "K"
+  },
+  "shape": [
+    4,
+    4,
+    8
+  ],
+  "t_server_ns": 81234567890123
+}

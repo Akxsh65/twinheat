@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/verified.json",
+  "title": "verified",
+  "description": "server -> client final verified field (CLAUDE.md §10.3). theta in K; cert in K (Lemma 2; null = no certificate, solved to tolerance); iters = PCG iterations; ms = wall-clock milliseconds.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "type", "id", "theta", "cert", "iters", "ms", "stop_reason", "shape"],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "type": { "const": "verified" },
+    "id": { "$ref": "#/$defs/id" },
+    "theta": { "$ref": "#/$defs/f16_field" },
+    "cert": { "type": ["number", "null"], "minimum": 0 },
+    "iters": { "type": "integer", "minimum": 0 },
+    "ms": { "type": "number", "minimum": 0 },
+    "stop_reason": { "type": "string", "minLength": 1 },
+    "shape": { "$ref": "#/$defs/shape" },
+    "t_server_ns": { "$ref": "#/$defs/t_server_ns" }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "f16_field": {
+      "type": "string",
+      "minLength": 4,
+      "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+      "description": "base64 of little-endian float16, row-major [layer, y, x]; decoded length must be 2 * prod(shape) bytes (checked by validate.py / contracts.js)"
+    },
+    "shape": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": false,
+      "prefixItems": [
+        { "const": 4 },
+        { "type": "integer", "minimum": 1 },
+        { "type": "integer", "minimum": 1 }
+      ],
+      "description": "[4, n, n]; shape[1] == shape[2] is checked by validate.py / contracts.js"
+    },
+    "t_server_ns": { "type": "integer", "minimum": 0, "description": "server monotonic clock, ns (E11)" }
+  }
+}

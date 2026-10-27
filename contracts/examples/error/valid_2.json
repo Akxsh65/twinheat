@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "type": "error",
+  "id": null,
+  "message": "message is not valid JSON",
+  "t_server_ns": 81234570990123
+}

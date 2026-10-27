@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "type": "pred",
+  "id": "q-1",
+  "mu": "L0kqTvVI41DKTrJKB0xcTHhJaUjSOhpMhk3jRDtLfkzEPGNI3U23R9EzIkjaUI1PFVUVUz5FVUppRoVG8VMsUKpJqVPaTPlMtksuUgZFikKaUCBNU0AWT+VBu0FFPJhLdEyvTtBII059TYZLmE4FUNxO0TivULVIfj4YSF5PJ1A=",
+  "sd": "DS4vNJwy4jwzO5Q4NTExNoAwbjTSN/gwQzFWNkgzWSpdNNw0DywjN7s2BC5KMZEyCzhENh08jjrrOgU6uzYeLFA4yDW9Loswby3zNoU4wDLGLzU7HjZROII0wTeFL0w5fTuEOCQ4rTnqLN04oCn/N8A8YjB8MCs2LzVMLrgtvSo=",
+  "B": null,
+  "decision": "preview",
+  "group": null,
+  "peak": 61.25,
+  "units": {
+    "mu": "K",
+    "sd": "K",
+    "B": "K",
+    "peak": "K"
+  },
+  "shape": [
+    4,
+    4,
+    4
+  ]
+}

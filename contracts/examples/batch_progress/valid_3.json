@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "type": "batch_progress",
+  "batch_id": "b-0002",
+  "active_ids": [
+    "d-9"
+  ],
+  "done": [],
+  "stage_ms": {
+    "gate": 0,
+    "scan": 0,
+    "pcg": 0,
+    "scatter": 0
+  },
+  "designs_per_s": 0
+}

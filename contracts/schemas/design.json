@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/design.json",
+  "title": "design",
+  "description": "client -> server commit (CLAUDE.md §10.3). The server calls coin.commit(id) first, then gates (B8).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "type", "id", "record"],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "type": { "const": "design" },
+    "id": { "$ref": "#/$defs/id" },
+    "record": { "$ref": "board_record.json" }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 }
+  }
+}

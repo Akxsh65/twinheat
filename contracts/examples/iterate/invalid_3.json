@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "type": "iterate",
+  "id": "d-2",
+  "k": 0,
+  "theta": "@@@@",
+  "cert_k": 12.5,
+  "shape": [
+    4,
+    4,
+    4
+  ]
+}

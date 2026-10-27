@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "participant": "P01",
+  "condition": "calibrated",
+  "t_ms": 15230.5,
+  "action": "commit",
+  "design_hash": "3f2a9c1e5b7d4f6a8c0e2b4d6f8a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a",
+  "server_decision": "accept"
+}

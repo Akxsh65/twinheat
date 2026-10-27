@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/pred.json",
+  "title": "pred",
+  "description": "server -> client prediction (CLAUDE.md §10.3). mu, sd, B, peak in kelvin (temperature rise). decision 'preview' only answers a query. B null = no finite bound (no gate yet, or q_t = +inf). group null = no group assigned.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "type", "id", "mu", "sd", "B", "decision", "group", "peak", "units", "shape"],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "type": { "const": "pred" },
+    "id": { "$ref": "#/$defs/id" },
+    "mu": { "$ref": "#/$defs/f16_field" },
+    "sd": { "$ref": "#/$defs/f16_field" },
+    "B": { "type": ["number", "null"], "minimum": 0 },
+    "decision": { "enum": ["preview", "accept", "flag", "audit"] },
+    "group": { "type": ["string", "null"], "minLength": 1 },
+    "peak": { "type": "number" },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mu", "sd", "B", "peak"],
+      "properties": {
+        "mu": { "const": "K" },
+        "sd": { "const": "K" },
+        "B": { "const": "K" },
+        "peak": { "const": "K" }
+      }
+    },
+    "shape": { "$ref": "#/$defs/shape" },
+    "t_server_ns": { "$ref": "#/$defs/t_server_ns" }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "f16_field": {
+      "type": "string",
+      "minLength": 4,
+      "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+      "description": "base64 of little-endian float16, row-major [layer, y, x]; decoded length must be 2 * prod(shape) bytes (checked by validate.py / contracts.js)"
+    },
+    "shape": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": false,
+      "prefixItems": [
+        { "const": 4 },
+        { "type": "integer", "minimum": 1 },
+        { "type": "integer", "minimum": 1 }
+      ],
+      "description": "[4, n, n]; shape[1] == shape[2] is checked by validate.py / contracts.js"
+    },
+    "t_server_ns": { "type": "integer", "minimum": 0, "description": "server monotonic clock, ns (E11)" }
+  }
+}

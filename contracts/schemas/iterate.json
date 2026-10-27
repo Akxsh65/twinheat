@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twinheat.invalid/contracts/1.0/iterate.json",
+  "title": "iterate",
+  "description": "server -> client PCG iterate, sent every k iterations (CLAUDE.md §10.3). theta in K. cert_k = Lemma 2 bound in K on the error of every cell at iterate k; null = no certificate for this board (the M-matrix check of §8.4 failed), so no guaranteed band may be drawn.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "type", "id", "k", "theta", "cert_k", "shape"],
+  "properties": {
+    "schema_version": { "$ref": "#/$defs/schema_version" },
+    "type": { "const": "iterate" },
+    "id": { "$ref": "#/$defs/id" },
+    "k": { "type": "integer", "minimum": 0 },
+    "theta": { "$ref": "#/$defs/f16_field" },
+    "cert_k": { "type": ["number", "null"], "minimum": 0 },
+    "shape": { "$ref": "#/$defs/shape" },
+    "t_server_ns": { "$ref": "#/$defs/t_server_ns" }
+  },
+  "$defs": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "f16_field": {
+      "type": "string",
+      "minLength": 4,
+      "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+      "description": "base64 of little-endian float16, row-major [layer, y, x]; decoded length must be 2 * prod(shape) bytes (checked by validate.py / contracts.js)"
+    },
+    "shape": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": false,
+      "prefixItems": [
+        { "const": 4 },
+        { "type": "integer", "minimum": 1 },
+        { "type": "integer", "minimum": 1 }
+      ],
+      "description": "[4, n, n]; shape[1] == shape[2] is checked by validate.py / contracts.js"
+    },
+    "t_server_ns": { "type": "integer", "minimum": 0, "description": "server monotonic clock, ns (E11)" }
+  }
+}

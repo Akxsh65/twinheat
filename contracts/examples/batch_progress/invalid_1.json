@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "type": "batch_progress",
+  "batch_id": "b-0001",
+  "active_ids": [
+    "d-2",
+    "d-3"
+  ],
+  "done": [
+    {
+      "id": "d-1",
+      "iters": 18,
+      "cert": 0.6,
+      "reason": "audit_decided"
+    }
+  ],
+  "stage_ms": {
+    "gate": 1.2,
+    "scan": 0.05,
+    "pcg": 380.0
+  },
+  "designs_per_s": 41.5
+}

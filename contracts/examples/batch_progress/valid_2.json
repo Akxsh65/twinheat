@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "type": "batch_progress",
+  "batch_id": "b-0001",
+  "active_ids": [],
+  "done": [
+    {
+      "id": "d-2",
+      "iters": 65,
+      "cert": 0.09,
+      "reason": "cert_tau_v"
+    },
+    {
+      "id": "d-3",
+      "iters": 170,
+      "cert": null,
+      "reason": "tol"
+    }
+  ],
+  "stage_ms": {
+    "gate": 1.2,
+    "scan": 0.05,
+    "pcg": 380.0,
+    "scatter": 0.4
+  },
+  "designs_per_s": 38.0,
+  "t_server_ns": 81234569990123
+}

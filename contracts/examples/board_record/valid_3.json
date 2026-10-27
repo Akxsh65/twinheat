@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "id": "ood-bottom-000007",
+  "seed": 7,
+  "mode": "ood_bottom_chips",
+  "stack": {
+    "outer_oz": 1,
+    "inner_oz": 1,
+    "k_fr4_xy": 1.06
+  },
+  "layers": [
+    {
+      "layer": 1,
+      "shapes": [
+        {
+          "type": "trace",
+          "points": [
+            [
+              5,
+              5
+            ],
+            [
+              35,
+              35
+            ],
+            [
+              35,
+              90
+            ]
+          ],
+          "width": 3.2
+        }
+      ]
+    },
+    {
+      "layer": 2,
+      "plane": true,
+      "cutouts": [
+        {
+          "type": "rect",
+          "x0": 10,
+          "y0": 10,
+          "w": 5,
+          "h": 5
+        },
+        {
+          "type": "rect",
+          "x0": 60,
+          "y0": 60,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "type": "rect",
+          "x0": 85,
+          "y0": 5,
+          "w": 10,
+          "h": 30
+        }
+      ]
+    },
+    {
+      "layer": 3,
+      "split_rects": [
+        {
+          "type": "rect",
+          "x0": 0,
+          "y0": 0,
+          "w": 100,
+          "h": 50
+        },
+        {
+          "type": "rect",
+          "x0": 0,
+          "y0": 50,
+          "w": 100,
+          "h": 50
+        }
+      ]
+    },
+    {
+      "layer": 4,
+      "shapes": [
+        {
+          "type": "disc",
+          "cx": 70,
+          "cy": 30,
+          "r": 15
+        }
+      ]
+    }
+  ],
+  "chips": [
+    {
+      "x0": 20,
+      "y0": 50,
+      "w": 15,
+      "h": 9,
+      "P": 1.8,
+      "side": "bottom"
+    },
+    {
+      "x0": 60,
+      "y0": 20,
+      "w": 4.7,
+      "h": 9.4,
+      "P": 0.7,
+      "side": "bottom"
+    }
+  ],
+  "via_arrays": [],
+  "background_via_density_per_mm2": 0.05,
+  "convection": {
+    "h_top": 12.5,
+    "h_bot": 6.0,
+    "forced_zone": null
+  },
+  "dirichlet_edges": [
+    "S",
+    "E"
+  ],
+  "design_vector": null
+}
