@@ -361,7 +361,7 @@ def test_ood_modes_are_not_implemented_yet(mode: str) -> None:
 
 
 def test_ood_modes_come_from_spec_v2() -> None:
-    assert len(sampler.OOD_MODES) == 10
+    assert len(sampler.OOD_MODES) == 9
     assert "ood_bottom_chips" in sampler.OOD_MODES
 
 
