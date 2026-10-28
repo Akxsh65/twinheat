@@ -11,7 +11,7 @@ symmetries round-trip exactly.
 
 Numbers come from config/spec_v1.yaml (the §6.5 painted copper, chips, convection), spec_v2.yaml
 (the §7.4 additions and sampler.v0_defaults, which are UNSURE defaults M must confirm) and
-config/design_task.yaml (open decision D2: every value there is a placeholder).
+config/design_task.yaml (decision D2, docs/decisions.md).
 
 Layer coverage checks (§6.5 mean phi, §7.1 phi_2 and phi_3, §7.4 L4 5-40 %) use coverage(), a
 point-grid estimate on coverage_grid_points² points; Phase 1 replaces it with data/raster.py.
@@ -408,7 +408,7 @@ def _pair(v: Any, key: str) -> tuple[float, float]:
 
 @cache
 def _design_task() -> dict[str, Any]:
-    """config/design_task.yaml, checked (open decision D2: all values are placeholders)."""
+    """config/design_task.yaml, checked (decision D2, docs/decisions.md)."""
     task = yaml.safe_load(DESIGN_TASK_PATH.read_text(encoding="utf-8"))
     want = {"design_task_version", "mapping", "chips", "stack", "layers",
             "background_via_density_per_mm2", "convection", "dirichlet_edges"}  # fmt: skip
@@ -442,7 +442,7 @@ def design_board(x: np.ndarray, *, seed: int = 0) -> dict[str, Any]:
     """Board record for design vector x in [0, 1]^36 (CLAUDE.md §7.4); deterministic in x.
 
     x[0:8] chip centres, x[8:32] six L1 rectangles (x, y, w, h), x[32:36] via densities; the
-    mapping and every fixed parameter come from config/design_task.yaml (D2 placeholders).
+    mapping and every fixed parameter come from config/design_task.yaml (decision D2).
     seed records the generator that drew x (0 when x was given directly). Raises
     InfeasibleDesignError if chips break the §6.5 gap or edge margin, ValueError for a bad x.
     """

@@ -1,41 +1,40 @@
-# Fixed parameters of the 36-dim design task (CLAUDE.md §7.4, §17 D2).
-#
-# TODO D2: to be decided by M. EVERY value in this file is a PLACEHOLDER chosen only so that
-# data/sampler.py:design_board runs and its records validate. None of them comes from CLAUDE.md.
-# Changing a value changes every design-space board; log the final choice in docs/decisions.md (D2).
+# Fixed parameters of the 36-dim design task (CLAUDE.md §7.4; open decision D2, decided 2026-10-28
+# by M, see docs/decisions.md "D2"). Changing a value changes every design-space board: bump
+# design_task_version and log it in docs/decisions.md.
 #
 # Units: mm for geometry, W for power, W/(m²·K) for convection, vias/mm² for via density
 # (board-record units, CLAUDE.md §10.1). Read by data/sampler.py, which validates every key.
-design_task_version: "0-placeholder"
+design_task_version: "1"
 
 # Layout of x in [0, 1]^36, in the order of CLAUDE.md §7.4:
 #   x[0:8]   chip centres (cx, cy) for chips 0..3
 #   x[8:32]  six L1 copper rectangles, (x, y, w, h) each
 #   x[32:36] via density under chips 0..3
-# PLACEHOLDER mappings (affine, every component in [0, 1]):
+# Mappings (affine, every component in [0, 1]):
 #   chip centre  c = lo + x * (hi - lo), lo = edge_margin + size/2, hi = 100 - edge_margin - size/2
 #   rect size    w = lo + x * (hi - lo) over rect_side;  rect corner x0 = x * (100 - w)  (same for y, h)
 #   via density  d = lo + x * (hi - lo) over via_density
 mapping:
-  rect_side: [5.0, 40.0]      # PLACEHOLDER (mm); borrows the §6.5 rect side range
-  via_density: [0.0, 1.0]     # PLACEHOLDER (vias/mm²); 0 = no via array effect
-  enforce_l1_coverage: false  # PLACEHOLDER; the §6.5 mean-phi rule is for random boards
+  rect_side: [5.0, 40.0]      # mm; the §6.5 rect side range
+  via_density: [0.0, 1.0]     # vias/mm²; the §7.4 range, 0 = no via array
+  enforce_l1_coverage: true   # keep L1 mean phi in the §7.4 training range [0.10, 0.60]
 
-chips:                        # PLACEHOLDER sizes (mm) and powers (W); total must stay <= 6 W
-  - {w: 10.0, h: 10.0, P: 1.5}
-  - {w: 12.0, h: 6.0, P: 1.0}
+chips:                        # sizes (mm) and powers (W) inside §6.5 ranges; total 5 W (cap 6 W)
+  - {w: 12.0, h: 12.0, P: 2.0}   # dominant "processor"
+  - {w: 10.0, h: 8.0, P: 1.5}
   - {w: 8.0, h: 8.0, P: 1.0}
   - {w: 6.0, h: 6.0, P: 0.5}
 
-stack: {outer_oz: 1, inner_oz: 1, k_fr4_xy: 0.81}   # PLACEHOLDER
+stack: {outer_oz: 1, inner_oz: 1, k_fr4_xy: 0.81}   # 1 oz everywhere; nominal FR-4 (§6.3)
 
-layers:                       # PLACEHOLDER: L2 full plane, L3 split in two halves, L4 bare
+layers:                       # L2 full ground plane; L3 split in two halves; L4 one fixed pour
   l2_cutouts: []
   l3_split_rects:
     - {type: rect, x0: 0.0, y0: 0.0, w: 50.0, h: 100.0}
     - {type: rect, x0: 50.0, y0: 0.0, w: 50.0, h: 100.0}
-  l4_shapes: []
+  l4_shapes:                  # 40 x 50 mm = 20 % coverage, inside the §7.4 L4 range 5-40 %
+    - {type: rect, x0: 30.0, y0: 25.0, w: 40.0, h: 50.0}
 
-background_via_density_per_mm2: 0.02                 # PLACEHOLDER
-convection: {h_top: 10.0, h_bot: 10.0, forced_zone: null}   # PLACEHOLDER
-dirichlet_edges: []                                  # PLACEHOLDER
+background_via_density_per_mm2: 0.02                 # middle of the §7.4 range 0-0.05
+convection: {h_top: 10.0, h_bot: 10.0, forced_zone: null}   # still air on both faces (§6.3, §14 rig)
+dirichlet_edges: []                                  # no heat sink, as on the E17 rig (§14)
