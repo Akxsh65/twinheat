@@ -60,6 +60,21 @@ changing one is a YAML edit plus a line here. Records generated before a change 
      rules from G1.2) give a minimum pitch of ≈ 0.75–0.8 mm, i.e. ≤ ≈ 1.6–1.8 vias/mm². Raise it if the
      fab allows a tighter pitch.
 - **Owners to confirm:** M (decided); N (point 2, and the CLAUDE.md change); G (point 5 against the fab rules).
+- **Sampling defaults chosen in M1.2** (CLAUDE.md does not fix them; UNSURE, M to confirm). Each OOD mode
+  draws everything else exactly as `id`.
+  - `ood_1`: chip count uniform on 5–8; placement and powers as ID (total still ≤ 6 W).
+  - `ood_2`: per-chip power log-uniform on [3, 6] W (the ID family); if the total exceeds 12 W all are
+    rescaled, as in ID. The moved axis is the largest chip power (> 3 W).
+  - `ood_3`: every L1 region is an L-shape or a 45° trace, p = 0.5 / 0.5. L-shape: a §6.5-sized box with
+    arms of width U[3.2, 6] mm (the ID trace width, so thinness does not also move) along the two sides at
+    a random corner; both arms must stay on the board. 45° trace: §6.5 segment counts, lengths and
+    widths; start in one of 8 directions, each later segment turns ±45°; a segment is shortened to stay on
+    the board (clamping one axis would bend the angle); at least one diagonal segment.
+  - `ood_4`: L1 trace widths U[0.8, 2.0] mm and at least one trace on L1; L4 traces stay ID.
+  - `ood_6`: 3 or 4 whole heat-sunk edges, uniform.
+  - `ood_7`: h_top and h_bot U[2, 5]; forced zone (p = 0.3 as ID) with h_top U[50, 100].
+  - `ood_bottom_chips`: every chip on the bottom (`bottom_chips_side: all`).
+  - `ood_dense_vias`: p = 0.6 per chip as ID, redrawn until at least one array exists.
 
 ## D3 · Outer-layer G_l dielectric term
 

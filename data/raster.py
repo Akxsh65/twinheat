@@ -15,12 +15,18 @@ Shape rules (same as data/sampler.py and the solver tests):
   rect   half-open [x0, x0 + w) x [y0, y0 + h); a sample exactly on an edge raises (it would break
          the symmetry), which cannot happen for the spec's resolution and N divisible by 4
   disc   closed, (x − cx)² + (y − cy)² <= r²
-  trace  capsule: points within width/2 of a segment (docs/decisions.md). Segments must be
-         axis-aligned (Manhattan, §6.5); 45° traces are OOD-3 and come with M1.2.
+  trace  capsule: points within width/2 of a segment (docs/decisions.md). Axis-aligned segments
+         are tested exactly; other segments (OOD-3 45° traces) compare cross² <= r²·|d|² in
+         float64 built only from symmetry-invariant integers, so symmetry stays exact.
 Layers: φ1 = union of L1 shapes; φ2 = 1 − union of cut-outs if plane else 0; φ3 = union of split
-rects; φ4 = union of L4 shapes. Chips put P on L1 spread by area fraction over the *sampled*
-footprint, so Σ q·Δx² equals the total power exactly. Via density (arrays + background) is the
-same on all three gaps (through-hole vias). The forced zone sets h_top inside it, by area fraction.
+rects; φ4 = union of L4 shapes. Top chips put P on L1 (q), bottom chips on L4 (q_bot), spread by
+area fraction over the *sampled* footprint, so Σ (q + q_bot)·Δx² equals the total power exactly.
+Via density (arrays + background) is the same on all three gaps (through-hole vias). The forced
+zone sets h_top inside it, by area fraction.
+
+q_bot is proposed in docs/decisions.md ("OOD sets v2", point 2) and needs N: until
+solvers/fvm.py reads it, the solver silently ignores bottom-chip heat (tests/test_raster.py has a
+strict xfail that flips when it does). Do not generate ood_bottom_chips data before then.
 """
 
 from __future__ import annotations
@@ -50,13 +56,15 @@ N_GAPS = 3
 class Raster:
     """Per-cell fields of one board, SI units, read-only arrays [.., y, x].
 
-    phi [4,N,N] copper coverage (1) · q [N,N] W/m² on L1 · nu [3,N,N] vias/m² for gaps L1–L2,
-    L2–L3, L3–L4 · h_top, h_bot [N,N] W/(m²·K) · dirichlet_mask [N,N] 1 on cells next to a
-    Dirichlet edge · t_cu [4] m per layer · k_fr4_xy W/(m·K) · N cells per side · dx m.
+    phi [4,N,N] copper coverage (1) · q [N,N] W/m² on L1 · q_bot [N,N] W/m² on L4 (bottom chips,
+    zero otherwise) · nu [3,N,N] vias/m² for gaps L1–L2, L2–L3, L3–L4 · h_top, h_bot [N,N]
+    W/(m²·K) · dirichlet_mask [N,N] 1 on cells next to a Dirichlet edge · t_cu [4] m per layer ·
+    k_fr4_xy W/(m·K) · N cells per side · dx m.
     """
 
     phi: np.ndarray
     q: np.ndarray
+    q_bot: np.ndarray
     nu: np.ndarray
     h_top: np.ndarray
     h_bot: np.ndarray
@@ -67,7 +75,8 @@ class Raster:
     dx: float
 
 
-_ARRAY_FIELDS = ("phi", "q", "nu", "h_top", "h_bot", "dirichlet_mask")
+_ARRAY_FIELDS = ("phi", "q", "q_bot", "nu", "h_top", "h_bot", "dirichlet_mask")
+_MAX_UNITS = 3_000_000_000  # board extent cap: keeps every int64 product below 2^63
 
 
 def _frozen(a: np.ndarray) -> np.ndarray:
@@ -89,6 +98,8 @@ class _Grid:
         self.n, self.m, self.res = n, n * SS, res_mm
         self.lr = round(lr)
         self.two_m = 2 * self.m
+        if self.lr * self.two_m > _MAX_UNITS:
+            raise ValueError(f"N = {n} is too fine for exact int64 inside-tests")
         self.s = (2 * np.arange(self.m, dtype=np.int64) + 1) * self.lr  # sample coordinates
 
     def units(self, v_mm: float, what: str) -> int:
@@ -138,15 +149,33 @@ class _Grid:
                for px, py in t["points"]]
         for (ax, ay), (bx, by) in zip(pts, pts[1:], strict=False):
             if ax != bx and ay != by:
-                raise NotImplementedError(
-                    f"{what}: segment {t['points']} is not axis-aligned; only Manhattan traces "
-                    "(§6.5) are rasterised until OOD-3 (M1.2)")
+                self._oblique(out, ax, ay, bx, by, half)
+                continue
             self._disc(out, ax, ay, half)
             self._disc(out, bx, by, half)
             x_lo, x_hi = (min(ax, bx), max(ax, bx)) if ay == by else (ax - half, ax + half)
             y_lo, y_hi = (ay - half, ay + half) if ay == by else (min(ay, by), max(ay, by))
             kx, ky = self.krange(x_lo, x_hi), self.krange(y_lo, y_hi)
             out[ky, kx] = True  # closed band along the segment: the rest of the capsule
+
+    def _oblique(self, out: np.ndarray, ax: int, ay: int, bx: int, by: int, half: int) -> None:
+        """Capsule of a non-axis-aligned segment (OOD-3 45° traces).
+
+        Near an end: integer distance². Along the segment: 0 <= (p−a)·d <= |d|² and
+        cross² <= r²·|d|². cross, (p−a)·d and |d|² are integers that a square symmetry only
+        permutes or negates, so the float64 comparison gives identical results under symmetry.
+        """
+        kx = self.krange(min(ax, bx) - half, max(ax, bx) + half)
+        ky = self.krange(min(ay, by) - half, max(ay, by) + half)
+        px, py = self.s[kx][None, :] - ax, self.s[ky][:, None] - ay
+        dx, dy = bx - ax, by - ay
+        d2, r2 = dx * dx + dy * dy, half * half
+        dot = px * dx + py * dy
+        cross = (px * dy - py * dx).astype(np.float64)
+        near_a = px * px + py * py <= r2
+        near_b = (px - dx) ** 2 + (py - dy) ** 2 <= r2
+        band = (dot >= 0) & (dot <= d2) & (cross * cross <= float(r2) * float(d2))
+        out[ky, kx] |= near_a | near_b | band
 
     def shape(self, out: np.ndarray, s: dict[str, Any], what: str) -> None:
         {"rect": self.rect, "disc": self.disc, "trace": self.trace}[s["type"]](out, s, what)
@@ -196,8 +225,7 @@ def _dirichlet_mask(n: int, edges: list[str]) -> np.ndarray:
 def rasterise(record: dict[str, Any], spec: specmod.SpecV2, N: int) -> Raster:
     """Raster of `record` (a board_record, mm) at N x N cells; `spec` is config/spec_v2.yaml.
 
-    Raises ContractError for an invalid record, ValueError for off-grid geometry or a bad N,
-    NotImplementedError for bottom-side chips and non-Manhattan traces (OOD work, M1.2).
+    Raises ContractError for an invalid record, ValueError for off-grid geometry or a bad N.
     """
     if not isinstance(spec, specmod.SpecV2):
         raise TypeError(f"spec must be a SpecV2 (config/spec_v2.yaml), got {type(spec).__name__}")
@@ -216,17 +244,15 @@ def rasterise(record: dict[str, Any], spec: specmod.SpecV2, N: int) -> Raster:
     phi[2] = g.union(l3["split_rects"], f"{rid}: layers[2].split_rects")
     phi[3] = g.union(l4["shapes"], f"{rid}: layers[3].shapes")
 
-    q = np.zeros((n, n))
+    q, q_bot = np.zeros((n, n)), np.zeros((n, n))
     for i, c in enumerate(record["chips"]):
         what = f"{rid}: chips[{i}]"
-        if c["side"] != "top":
-            raise NotImplementedError(f"{what}: side {c['side']!r}; bottom-side chips (q on L4) "
-                                      "are ood_bottom_chips, added in M1.2")
         f = g.rect_frac(c, what)
         area = f.sum() * dx * dx  # sampled footprint, m²
         if area <= 0.0:
             raise ValueError(f"{what}: footprint covers no supersample at N = {n}")
-        q += c["P"] * f / area
+        target = {"top": q, "bottom": q_bot}[c["side"]]
+        target += c["P"] * f / area
 
     nu_cells = np.full((n, n), record["background_via_density_per_mm2"] * PER_MM2_TO_PER_M2)
     for i, a in enumerate(record["via_arrays"]):
@@ -244,7 +270,7 @@ def rasterise(record: dict[str, Any], spec: specmod.SpecV2, N: int) -> Raster:
     st = record["stack"]
     oz = (st["outer_oz"], st["inner_oz"], st["inner_oz"], st["outer_oz"])
     return Raster(
-        phi=_frozen(phi), q=_frozen(q), nu=_frozen(nu), h_top=_frozen(h_top),
+        phi=_frozen(phi), q=_frozen(q), q_bot=_frozen(q_bot), nu=_frozen(nu), h_top=_frozen(h_top),
         h_bot=_frozen(h_bot), dirichlet_mask=_frozen(_dirichlet_mask(n, record["dirichlet_edges"])),
         t_cu=_frozen(np.array(oz, dtype=np.float64) * T_CU_1OZ),
         k_fr4_xy=float(st["k_fr4_xy"]), N=n, dx=dx,

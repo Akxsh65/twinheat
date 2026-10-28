@@ -355,9 +355,10 @@ def test_bad_symmetry_index_raises(sym: Any) -> None:
 
 
 @pytest.mark.parametrize("mode", sampler.OOD_MODES)
-def test_ood_modes_are_not_implemented_yet(mode: str) -> None:
-    with pytest.raises(NotImplementedError, match=mode):
-        sample_board(0, mode)
+def test_ood_modes_sample_valid_records(mode: str) -> None:  # axes: tests/test_ood.py (M1.2)
+    rec = sample_board(0, mode)
+    validate(rec, "board_record")
+    assert rec["mode"] == mode
 
 
 def test_ood_modes_come_from_spec_v2() -> None:

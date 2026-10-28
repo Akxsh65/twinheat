@@ -104,6 +104,10 @@ ood:
   samples_per_set: {value: 500, unit: count, range: [500, 500], source: "CLAUDE.md §7.4"}
   dense_via_threshold: {value: 1.0, unit: "via/mm²", range: [1.0, 1.0], source: "CLAUDE.md §7.4", note: "ood_dense_vias uses densities above this"}
   dense_via_density: {value: [1.0, 1.5], unit: "via/mm²", range: [1.0, 1.5], dist: uniform, source: "CLAUDE.md §7.4", note: "(1.0, 1.5]: upper bound from manufacturability, docs/decisions.md OOD sets v2 point 5"}
+  # OOD sampling defaults CLAUDE.md does not fix. UNSURE, M to confirm (docs/decisions.md, OOD sets v2).
+  ood_3_shape_types: {value: [L_shape, trace_45deg], unit: text, dist: categorical, p: [0.5, 0.5], source: "CLAUDE.md §6.7", note: "default: every L1 region is one of these (annuli dropped, decision point 1)"}
+  l_shape_arm_width: {value: [3.2, 6.0], unit: mm, range: [3.2, 6.0], dist: uniform, source: "CLAUDE.md §6.5", note: "default: the ID trace width, so OOD-3 does not also move feature thinness; bounding box as the §6.5 rect"}
+  bottom_chips_side: {value: all, unit: text, source: "CLAUDE.md §7.4", note: "default: every chip of an ood_bottom_chips board is on the bottom"}
   ood_3oz_outer_oz: {value: 3.0, unit: oz, range: [3.0, 3.0], source: "CLAUDE.md §6.3", note: "outer layers L1, L4 only; inner stays 1 oz (docs/decisions.md OOD sets v2 point 4)"}
 
 splits:
