@@ -37,6 +37,9 @@ def design_records() -> list[dict[str, Any]]:
 def _feasible_x() -> np.ndarray:
     x = np.full(36, 0.5)
     x[0:8] = [0.1, 0.1, 0.9, 0.1, 0.1, 0.9, 0.9, 0.9]  # chips near the four corners
+    # six separate rects (corner x, corner y, w, h), so L1 coverage is inside [0.10, 0.60] (D2)
+    x[8:32] = [0.1, 0.1, 0.5, 0.5, 0.5, 0.1, 0.5, 0.5, 0.9, 0.1, 0.5, 0.5,
+               0.1, 0.9, 0.5, 0.5, 0.5, 0.9, 0.5, 0.5, 0.9, 0.9, 0.5, 0.5]  # fmt: skip
     return x
 
 
@@ -375,3 +378,38 @@ def test_unknown_mode_raises(mode: str) -> None:
 def test_bad_seed_raises(seed: Any) -> None:
     with pytest.raises(ValueError, match="seed"):
         sample_board(seed, "id")
+
+
+# --------------------------------------------------------------------------- D2 design task
+
+
+def test_design_task_stays_inside_the_training_ranges() -> None:
+    """D2 (docs/decisions.md): design boards are half the training data, so their fixed parameters
+    must lie in the §6.5 / §7.4 ID ranges."""
+    s1, s2 = sampler._S1, sampler._S2
+    task = sampler._design_task()
+    assert task["design_task_version"] == "1"
+    lo_s, hi_s = s1.chip_short_side.value
+    lo_a, hi_a = s1.chip_aspect.value
+    lo_p, hi_p = s2.chip_power.value
+    for c in task["chips"]:
+        short, long_ = min(c["w"], c["h"]), max(c["w"], c["h"])
+        assert lo_s <= short <= hi_s and lo_a <= long_ / short <= hi_a, c
+        assert lo_p <= c["P"] <= hi_p, c
+    assert sum(c["P"] for c in task["chips"]) <= s2.total_power_max.value
+    assert task["stack"]["outer_oz"] in s2.outer_oz.value
+    assert task["stack"]["inner_oz"] == s2.inner_oz.value
+    assert _in(task["stack"]["k_fr4_xy"], s1.k_fr4_xy.value)
+    assert _in(task["background_via_density_per_mm2"], s2.background_via_density.value)
+    assert _in(task["convection"]["h_top"], s1.h_top_base.value)
+    assert _in(task["convection"]["h_bot"], s1.h_bot_base.value)
+    assert len(task["dirichlet_edges"]) <= 2
+    assert _in(coverage(task["layers"]["l4_shapes"]), sampler._V2.stack.layers[3].phi.value)
+    for seed in range(50):
+        rec = sample_board(seed, "design")
+        validate(rec, "board_record")
+        assert _in(coverage(rec["layers"][0]["shapes"]), sampler._V2.stack.layers[0].phi.value)
+
+
+def _in(v: float, lo_hi: list[float]) -> bool:
+    return lo_hi[0] <= v <= lo_hi[1]
