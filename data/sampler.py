@@ -51,6 +51,13 @@ _V2 = specmod.load(ROOT / "config" / "spec_v2.yaml")
 _S1 = _V1.sampler
 _S2 = _V2.sampler
 _DEF = _S2.v0_defaults
+_O2 = _V2.ood
+
+
+def _o1(name: str, param: str) -> specmod.Quantity:
+    """A §6.7 OOD range from spec_v1.yaml (CLAUDE.md §7.4: v2 reuses OOD-1…7)."""
+    return _V1.ood[name].params[param]
+
 
 OOD_MODES: tuple[str, ...] = tuple(_V2.ood.names.value)
 L_MM = _V2.geometry.L.value * 1.0e3  # board side in record units (mm)
@@ -73,6 +80,7 @@ _FLIP = np.array([[-1, 0], [0, 1]])
 _SYMS = [np.linalg.matrix_power(_ROT, r) @ np.linalg.matrix_power(_FLIP, f)
          for f in (0, 1) for r in range(4)]  # fmt: skip
 _EDGE_NORMALS = {"W": (-1, 0), "E": (1, 0), "S": (0, -1), "N": (0, 1)}
+_DIRS8 = ((1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1))  # 45° steps, CCW
 _SYM_SUFFIX = re.compile(r"^(.*)-sym([1-7])$")
 
 
@@ -170,46 +178,114 @@ def coverage(shapes: Sequence[dict[str, Any]]) -> float:
 # ---------------------------------------------------------------------------- copper layers
 
 
-def _painted_shape(rng: np.random.Generator) -> dict[str, Any]:
-    """One §6.5 painted region: rect, disc or Manhattan trace, centre uniform, clipped."""
-    kind = _categorical(rng, _S1.painted_region_type.value, _S1.painted_region_type.p)
-    if kind == "rect":
-        w, h = _uniform(rng, _S1.rect_side), _uniform(rng, _S1.rect_side)
-        cx, cy = rng.uniform(0, L_MM, size=2)
-        return _rect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
-    if kind == "disc":
-        cx, cy = rng.uniform(0, L_MM, size=2)
-        return {"type": "disc", "cx": _q(cx), "cy": _q(cy), "r": _q(_uniform(rng, _S1.disc_radius))}
+def _trace(rng: np.random.Generator, width_q: specmod.Quantity, diagonal: bool) -> dict[str, Any]:
+    """A §6.5 trace: Manhattan, or (OOD-3) turning ±45° between the 8 compass directions."""
     for _ in range(_MAX_TRIES):
         n_seg = _uniform_int(rng, _S1.trace_segment_count)
-        width = _q(_uniform(rng, _S1.trace_width))
+        width = _q(_uniform(rng, width_q))
         x, y = (_q(v) for v in rng.uniform(0, L_MM, size=2))
-        horizontal = _bernoulli(rng, _DEF.trace_first_horizontal_probability)
-        sign = 1.0 if rng.random() < 0.5 else -1.0  # the board has no preferred direction
         points = [[x, y]]
-        for i in range(n_seg):
-            if i > 0:  # turn +-90 degrees
-                ccw = _bernoulli(rng, _DEF.trace_turn_ccw_probability)
-                sign = sign * (1.0 if ccw == horizontal else -1.0)
-                horizontal = not horizontal
-            length = _uniform(rng, _S1.trace_segment_length)
-            if horizontal:
-                x = _q(min(L_MM, max(0.0, x + sign * length)))
-            else:
-                y = _q(min(L_MM, max(0.0, y + sign * length)))
-            if [x, y] != points[-1]:
-                points.append([x, y])
-        if len(points) >= 2:
+        if diagonal:
+            d = int(rng.integers(len(_DIRS8)))
+            for i in range(n_seg):
+                if i > 0:
+                    ccw = _bernoulli(rng, _DEF.trace_turn_ccw_probability)
+                    d = (d + (1 if ccw else -1)) % len(_DIRS8)
+                ux, uy = _DIRS8[d]
+                length = _uniform(rng, _S1.trace_segment_length)
+                c = length / math.sqrt(2) if ux and uy else length  # step per axis
+                # shorten to stay on the board: clamping each axis separately would bend the 45°
+                room = min((L_MM - x if ux > 0 else x) if ux else math.inf,
+                           (L_MM - y if uy > 0 else y) if uy else math.inf)  # fmt: skip
+                c = _q_floor(min(c, room))
+                x, y = _q(x + ux * c), _q(y + uy * c)
+                if [x, y] != points[-1]:
+                    points.append([x, y])
+        else:
+            horizontal = _bernoulli(rng, _DEF.trace_first_horizontal_probability)
+            sign = 1.0 if rng.random() < 0.5 else -1.0  # the board has no preferred direction
+            for i in range(n_seg):
+                if i > 0:  # turn +-90 degrees
+                    ccw = _bernoulli(rng, _DEF.trace_turn_ccw_probability)
+                    sign = sign * (1.0 if ccw == horizontal else -1.0)
+                    horizontal = not horizontal
+                length = _uniform(rng, _S1.trace_segment_length)
+                if horizontal:
+                    x = _q(min(L_MM, max(0.0, x + sign * length)))
+                else:
+                    y = _q(min(L_MM, max(0.0, y + sign * length)))
+                if [x, y] != points[-1]:
+                    points.append([x, y])
+        # a 45° trace whose diagonal segments were all shortened to nothing is redrawn
+        has_diagonal = any(a[0] != b[0] and a[1] != b[1]
+                           for a, b in zip(points, points[1:], strict=False))  # fmt: skip
+        if len(points) >= 2 and (has_diagonal or not diagonal):
             return {"type": "trace", "points": points, "width": width}
     raise RuntimeError(f"no non-degenerate trace in {_MAX_TRIES} tries")
 
 
-def _painted_layer(
-    rng: np.random.Generator, count: specmod.Quantity, phi: specmod.Quantity, name: str
-) -> list[dict[str, Any]]:
-    """Painted regions until the layer coverage lies in phi's range (§6.5 'otherwise resample')."""
+def _l_shape(rng: np.random.Generator) -> list[dict[str, Any]]:
+    """OOD-3 L-shape: two arms of width t along two sides of a §6.5 box, meeting at a corner."""
     for _ in range(_MAX_TRIES):
-        shapes = [_painted_shape(rng) for _ in range(_uniform_int(rng, count))]
+        w, h = _uniform(rng, _S1.rect_side), _uniform(rng, _S1.rect_side)
+        cx, cy = rng.uniform(0, L_MM, size=2)
+        t = _uniform(rng, _O2.l_shape_arm_width)
+        corner = int(rng.integers(4))  # 0 SW, 1 SE, 2 NE, 3 NW
+        if t >= min(w, h):
+            continue
+        x0, y0, x1, y1 = cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2
+        south, west = corner in (0, 1), corner in (0, 3)
+        arm_x = (x0, y0, x1, y0 + t) if south else (x0, y1 - t, x1, y1)
+        arm_y = (x0, y0, x0 + t, y1) if west else (x1 - t, y0, x1, y1)
+        arms = [r for r in (_rect(*arm_x), _rect(*arm_y)) if r["w"] > 0 and r["h"] > 0]
+        if len(arms) == 2:  # one arm clipped away would leave a plain (ID) rect
+            return arms
+    raise RuntimeError(f"no L-shape with both arms on the board in {_MAX_TRIES} tries")
+
+
+def _painted_shape(
+    rng: np.random.Generator,
+    family: specmod.Quantity | None = None,
+    trace_width: specmod.Quantity | None = None,
+) -> list[dict[str, Any]]:
+    """One painted region as record shapes: §6.5 rect, disc or Manhattan trace (centre uniform,
+    clipped), or with an OOD-3 family an L-shape (two rects) or a 45° trace."""
+    fam = family or _S1.painted_region_type
+    kind = _categorical(rng, fam.value, fam.p)
+    if kind == "rect":
+        w, h = _uniform(rng, _S1.rect_side), _uniform(rng, _S1.rect_side)
+        cx, cy = rng.uniform(0, L_MM, size=2)
+        return [_rect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)]
+    if kind == "disc":
+        cx, cy = rng.uniform(0, L_MM, size=2)
+        r = _q(_uniform(rng, _S1.disc_radius))
+        return [{"type": "disc", "cx": _q(cx), "cy": _q(cy), "r": r}]
+    if kind == "trace":
+        return [_trace(rng, trace_width or _S1.trace_width, diagonal=False)]
+    if kind == "L_shape":
+        return _l_shape(rng)
+    if kind == "trace_45deg":
+        return [_trace(rng, _S1.trace_width, diagonal=True)]
+    raise ValueError(f"unknown painted region type {kind!r}")
+
+
+def _painted_layer(
+    rng: np.random.Generator,
+    count: specmod.Quantity,
+    phi: specmod.Quantity,
+    name: str,
+    family: specmod.Quantity | None = None,
+    trace_width: specmod.Quantity | None = None,
+) -> list[dict[str, Any]]:
+    """Painted regions until the layer coverage lies in phi's range (§6.5 'otherwise resample').
+
+    With trace_width (OOD-4) the layer must also hold at least one trace.
+    """
+    for _ in range(_MAX_TRIES):
+        shapes = [s for _ in range(_uniform_int(rng, count))
+                  for s in _painted_shape(rng, family, trace_width)]  # fmt: skip
+        if trace_width is not None and not any(s["type"] == "trace" for s in shapes):
+            continue
         if _in_range(coverage(shapes), phi):
             return shapes
     raise RuntimeError(f"{name}: no coverage in {phi.value} after {_MAX_TRIES} tries")
@@ -270,11 +346,22 @@ def _chip_violation(chips: Sequence[dict[str, Any]]) -> str | None:
     return None
 
 
-def _chip_layout(rng: np.random.Generator) -> list[dict[str, Any]]:
-    """§6.5 chips by rejection: 100 tries of a whole layout, then resample the count."""
+def _chip_layout(
+    rng: np.random.Generator,
+    count: specmod.Quantity | None = None,
+    power: specmod.Quantity | None = None,
+    cap_q: specmod.Quantity | None = None,
+) -> list[dict[str, Any]]:
+    """§6.5 chips by rejection: 100 tries of a whole layout, then resample the count.
+
+    count, power (log-uniform per chip) and cap_q (total) default to ID; OOD-1 and OOD-2 move them.
+    """
     margin = _S1.chip_edge_margin_min.value
+    count = count or _S2.chip_count
+    power = power or _S2.chip_power
+    cap_q = cap_q or _S2.total_power_max
     for _ in range(_MAX_TRIES):
-        n = _uniform_int(rng, _S2.chip_count)
+        n = _uniform_int(rng, count)
         for _ in range(int(_S1.chip_placement_max_tries.value)):
             chips = []
             for _ in range(n):
@@ -286,8 +373,8 @@ def _chip_layout(rng: np.random.Generator) -> list[dict[str, Any]]:
                 y0 = _q_floor(rng.uniform(margin, L_MM - margin - h))
                 chips.append({"x0": x0, "y0": y0, "w": w, "h": h, "P": 0.0, "side": "top"})
             if _chip_violation(chips) is None:
-                powers = [_loguniform(rng, _S2.chip_power) for _ in chips]
-                total, cap = sum(powers), _S2.total_power_max.value
+                powers = [_loguniform(rng, power) for _ in chips]
+                total, cap = sum(powers), cap_q.value
                 scale = cap / total if total > cap else 1.0  # §6.5: rescale all if exceeded
                 for c, p in zip(chips, powers, strict=True):
                     c["P"] = p * scale
@@ -295,22 +382,37 @@ def _chip_layout(rng: np.random.Generator) -> list[dict[str, Any]]:
     raise RuntimeError(f"no valid chip layout after {_MAX_TRIES} chip counts")
 
 
-def _via_arrays(rng: np.random.Generator, chips: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
-    out = []
-    for c in chips:
-        if _bernoulli(rng, _S2.thermal_via_probability):
-            out.append({"x0": c["x0"], "y0": c["y0"], "w": c["w"], "h": c["h"],
-                        "density_per_mm2": _uniform(rng, _S2.thermal_via_density)})  # fmt: skip
-    return out
+def _via_arrays(
+    rng: np.random.Generator, chips: Sequence[dict[str, Any]], dense: bool = False
+) -> list[dict[str, Any]]:
+    """A via array under each chip with p = 0.6 (§7.4). dense (ood_dense_vias): density on
+    (1.0, 1.5] vias/mm² (spec_v2 ood.dense_via_density) and at least one array on the board."""
+    for _ in range(_MAX_TRIES):
+        out = []
+        for c in chips:
+            if _bernoulli(rng, _S2.thermal_via_probability):
+                if dense:
+                    lo, hi = _O2.dense_via_density.value
+                    d = hi - float(rng.uniform(0.0, hi - lo))  # (lo, hi]: strictly above lo
+                else:
+                    d = _uniform(rng, _S2.thermal_via_density)
+                out.append({"x0": c["x0"], "y0": c["y0"], "w": c["w"], "h": c["h"],
+                            "density_per_mm2": d})  # fmt: skip
+        if out or not dense:
+            return out
+    raise RuntimeError(f"no via array drawn in {_MAX_TRIES} tries")
 
 
 # ---------------------------------------------------------------------------- whole boards
 
 
-def _convection(rng: np.random.Generator) -> dict[str, Any]:
+def _convection(rng: np.random.Generator, ood: bool = False) -> dict[str, Any]:
+    """§6.5 convection; ood (OOD-7) draws natural h from 2–5 and forced h from 50–100."""
+    natural = _o1("ood_7", "h_natural") if ood else None
+    forced_q = _o1("ood_7", "h_forced") if ood else _S1.forced_zone_h_top
     out: dict[str, Any] = {
-        "h_top": _uniform(rng, _S1.h_top_base),
-        "h_bot": _uniform(rng, _S1.h_bot_base),
+        "h_top": _uniform(rng, natural or _S1.h_top_base),
+        "h_bot": _uniform(rng, natural or _S1.h_bot_base),
         "forced_zone": None,
     }
     if _bernoulli(rng, _S1.forced_zone_probability):
@@ -320,37 +422,68 @@ def _convection(rng: np.random.Generator) -> dict[str, Any]:
             "y0": _q_floor(rng.uniform(0, L_MM - h)),
             "w": w,
             "h": h,
-            "h_top": _uniform(rng, _S1.forced_zone_h_top),
+            "h_top": _uniform(rng, forced_q),
         }
     return out
 
 
-def _dirichlet_edges(rng: np.random.Generator) -> list[str]:
+def _dirichlet_edges(rng: np.random.Generator, ood: bool = False) -> list[str]:
+    """§6.6 heat-sunk edges; ood (OOD-6): 3 or 4 whole edges, uniform."""
     q = _V2.boundary.n_dirichlet_edges
-    n = int(_categorical(rng, q.value, q.p))
+    if ood:
+        n = _uniform_int(rng, _o1("ood_6", "n_dirichlet_edges"))
+    else:
+        n = int(_categorical(rng, q.value, q.p))
     picked = rng.choice(len(_EDGE_ORDER), size=n, replace=False)
     return [_EDGE_ORDER[i] for i in sorted(int(i) for i in picked)]
 
 
-def _random_board(seed: int, rng: np.random.Generator) -> dict[str, Any]:
+def _random_board(seed: int, rng: np.random.Generator, mode: str = "id") -> dict[str, Any]:
+    """An "id" board, or an OOD board that moves exactly one axis (spec_v2 ood.names):
+
+    ood_1 chip count 5–8 · ood_2 chip power 3–6 W each, total <= 12 W · ood_3 L1 regions are
+    L-shapes or 45° traces · ood_4 L1 traces 0.8–2 mm wide (at least one) · ood_6 3–4 heat-sunk
+    edges · ood_7 natural h 2–5, forced 50–100 · ood_bottom_chips every chip on the bottom ·
+    ood_3oz outer copper 3 oz · ood_dense_vias arrays on (1, 1.5] vias/mm², at least one.
+    Ranges: CLAUDE.md §6.7 via spec_v1 ood; choices: docs/decisions.md "OOD sets v2".
+    """
+    if mode == "ood_3oz":
+        outer = _O2.ood_3oz_outer_oz.value
+    else:
+        outer = _categorical(rng, _S2.outer_oz.value, _DEF.outer_oz_p.value)
     stack = {
-        "outer_oz": _num(_categorical(rng, _S2.outer_oz.value, _DEF.outer_oz_p.value)),
+        "outer_oz": _num(outer),
         "inner_oz": _num(_S2.inner_oz.value),
         "k_fr4_xy": _uniform(rng, _S1.k_fr4_xy),
     }
-    l1 = _painted_layer(rng, _S1.painted_region_count, _V2.stack.layers[0].phi, "L1")
+    l1 = _painted_layer(
+        rng, _S1.painted_region_count, _V2.stack.layers[0].phi, "L1",
+        family=_O2.ood_3_shape_types if mode == "ood_3" else None,
+        trace_width=_o1("ood_4", "trace_width") if mode == "ood_4" else None,
+    )  # fmt: skip
     cutouts = _l2_cutouts(rng)
     splits = _l3_split_rects(rng)
     l4 = _painted_layer(rng, _DEF.l4_region_count, _V2.stack.layers[3].phi, "L4")
-    chips = _chip_layout(rng)
-    vias = _via_arrays(rng, chips)
+    if mode == "ood_1":
+        chips = _chip_layout(rng, count=_o1("ood_1", "chip_count"))
+    elif mode == "ood_2":
+        chips = _chip_layout(rng, power=_o1("ood_2", "chip_power"),
+                             cap_q=_o1("ood_2", "total_power_max"))  # fmt: skip
+    else:
+        chips = _chip_layout(rng)
+    if mode == "ood_bottom_chips":
+        if _O2.bottom_chips_side.value != "all":
+            raise ValueError(f"bottom_chips_side {_O2.bottom_chips_side.value!r} not implemented")
+        for c in chips:
+            c["side"] = "bottom"
+    vias = _via_arrays(rng, chips, dense=mode == "ood_dense_vias")
     assert _DEF.background_via_density_dist.value == "uniform"
     background = _uniform(rng, _S2.background_via_density)
     return {
         "schema_version": "1.0",
-        "id": f"id-{seed:010d}",
+        "id": f"{mode}-{seed:010d}",
         "seed": seed,
-        "mode": "id",
+        "mode": mode,
         "stack": stack,
         "layers": [
             {"layer": 1, "shapes": l1},
@@ -361,8 +494,8 @@ def _random_board(seed: int, rng: np.random.Generator) -> dict[str, Any]:
         "chips": chips,
         "via_arrays": vias,
         "background_via_density_per_mm2": background,
-        "convection": _convection(rng),
-        "dirichlet_edges": _dirichlet_edges(rng),
+        "convection": _convection(rng, ood=mode == "ood_7"),
+        "dirichlet_edges": _dirichlet_edges(rng, ood=mode == "ood_6"),
         "design_vector": None,
     }
 
@@ -376,15 +509,14 @@ def _check_seed(seed: Any) -> int:
 def sample_board(seed: int, mode: str) -> dict[str, Any]:
     """Board record for `seed` (int >= 0) in `mode` ("id" or "design"); deterministic in both.
 
-    OOD modes (spec_v2 ood.names) raise NotImplementedError until Phase 1. "design" draws
-    x ~ U[0, 1]^36 by rejection until design_board(x) is feasible.
+    OOD modes (spec_v2 ood.names) move one axis outside training and draw the rest as "id"
+    (see _random_board). "design" draws x ~ U[0, 1]^36 by rejection until design_board(x) is
+    feasible.
     """
     seed = _check_seed(seed)
-    if mode in OOD_MODES:
-        raise NotImplementedError(f"mode {mode!r}: OOD sampling is added in Phase 1")
     rng = np.random.Generator(np.random.PCG64(seed))
-    if mode == "id":
-        return _random_board(seed, rng)
+    if mode == "id" or mode in OOD_MODES:
+        return _random_board(seed, rng, mode)
     if mode == "design":
         dim = int(_S2.design_space.dimension.value)
         for _ in range(_MAX_TRIES):
