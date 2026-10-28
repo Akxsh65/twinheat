@@ -8,3 +8,7 @@ scipy==1.16.3
 pyamg==5.3.0
 jsonschema==4.26.0
 websockets==17.3
+# torch for tests/test_fno.py: the same version as Kaggle (requirements.txt), CPU-only build
+# (~190 MB instead of the multi-GB CUDA wheels; checked to exist for manylinux / Python 3.11).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.11.0+cpu
