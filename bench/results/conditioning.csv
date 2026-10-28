@@ -1,0 +1,4 @@
+date,commit,board_id,N,layers,dirichlet_edges,lambda_min_W_per_K,lambda_max_W_per_K,kappa2,method,hardware
+2026-10-28,1557d75-dirty,id-0000000000,256,4,S,1.719606e-06,2.195045e-01,1.276481e+05,"scipy eigsh LA + shift-invert sigma=0, tol 1e-8",Windows-10-10.0.26200-SP0
+2026-10-28,1557d75-dirty,id-0000000001,256,4,E,1.281251e-06,2.232395e-01,1.742356e+05,"scipy eigsh LA + shift-invert sigma=0, tol 1e-8",Windows-10-10.0.26200-SP0
+2026-10-28,1557d75-dirty,id-0000000002,256,4,-,6.640212e-07,1.195611e-01,1.800562e+05,"scipy eigsh LA + shift-invert sigma=0, tol 1e-8",Windows-10-10.0.26200-SP0
