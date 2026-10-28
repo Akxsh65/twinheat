@@ -181,11 +181,14 @@ def test_v2_design_space_is_36_dimensional(v2: SpecV2) -> None:
     assert ds.copper_rect_dims.value == 6 * 4
 
 
-def test_v2_has_ten_ood_sets(v2: SpecV2) -> None:
-    names = v2.ood.names.value
-    assert len(names) == 10
-    assert len(set(names)) == 10
+def test_v2_has_nine_ood_sets(v2: SpecV2) -> None:
+    names = v2.ood.names.value  # ood_5 dropped on 4 layers (docs/decisions.md, OOD sets v2)
+    assert len(names) == 9
+    assert len(set(names)) == 9
     assert {"ood_bottom_chips", "ood_3oz", "ood_dense_vias"} <= set(names)
+    assert "ood_5" not in names
+    lo, hi = v2.ood.dense_via_density.value
+    assert lo == v2.ood.dense_via_threshold.value and hi > lo
 
 
 def test_v1_has_eight_ood_axes(v1: SpecV1) -> None:

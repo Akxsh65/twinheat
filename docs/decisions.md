@@ -39,6 +39,43 @@ changing one is a YAML edit plus a line here. Records generated before a change 
 - `transform_record` keeps `design_vector` as provenance (it describes the board before the symmetry) and
   marks the net symmetry in the id as `-sym<k>`.
 
+## OOD sets v2 (M1.2)
+
+- **Decision (2026-10-28, M):** five points CLAUDE.md §6.7 / §7.4 left open, decided before M1.2.
+  1. **No annuli (OOD-3) and no partial-edge Dirichlet (OOD-6) in OOD v1.** The board-record schema can
+     express neither, and contracts are frozen. OOD-3 keeps L-shapes (two rects) and 45° traces; OOD-6 keeps
+     3–4 whole heat-sunk edges. Both stay proposed for a schema v1.1 (`docs/contracts.md` A6, plus partial edges).
+  2. **Bottom-side chips: proposed `Raster.q_bot` [N,N] W/m² on L4**, zero except on `ood_bottom_chips`;
+     `q` stays [N,N] on L1, so the change is additive. **Needs N's agreement** (it changes `solvers/fvm.py`).
+     The model input (§7.5) has no L4 heat channel, so the surrogate cannot see bottom chips; the runtime
+     rule check flags `side = bottom` and sends those boards to the exact solver.
+  3. **`ood_5` is dropped from v2 (it stays for the v1 plate).** On 4 layers, L1 sheet contrast in
+     training already reaches ≈ 170× (1 oz) to ≈ 340× (2 oz) by §7.2/§7.3, above OOD-5's 130–160, so
+     OOD-5 is not out of distribution there. `ood_3oz` (≈ 500× at φ = 1) is the v2 contrast set. v2 has
+     9 OOD sets: CLAUDE.md §7.4 and §11.5 updated to match.
+  4. **`ood_3oz` = 3 oz on the outer layers (L1, L4); inner layers stay 1 oz.** Training varies outer copper
+     (1 or 2 oz) and fixes inner copper, so this moves one axis only.
+  5. **`ood_dense_vias`: via-array density uniform on (1.0, 1.5] vias/mm².** Upper bound from
+     manufacturability: 0.3 mm drill, 0.6 mm pad (G1.1) and a 0.1–0.2 mm pad gap (UNVERIFIED, check the fab
+     rules from G1.2) give a minimum pitch of ≈ 0.75–0.8 mm, i.e. ≤ ≈ 1.6–1.8 vias/mm². Raise it if the
+     fab allows a tighter pitch.
+- **Owners to confirm:** M (decided); N (point 2, and the CLAUDE.md change); G (point 5 against the fab rules).
+- **Sampling defaults chosen in M1.2** (CLAUDE.md does not fix them; UNSURE, M to confirm). Each OOD mode
+  draws everything else exactly as `id`.
+  - `ood_1`: chip count uniform on 5–8; placement and powers as ID (total still ≤ 6 W).
+  - `ood_2`: per-chip power log-uniform on [3, 6] W (the ID family); if the total exceeds 12 W all are
+    rescaled, as in ID. The moved axis is the largest chip power (> 3 W).
+  - `ood_3`: every L1 region is an L-shape or a 45° trace, p = 0.5 / 0.5. L-shape: a §6.5-sized box with
+    arms of width U[3.2, 6] mm (the ID trace width, so thinness does not also move) along the two sides at
+    a random corner; both arms must stay on the board. 45° trace: §6.5 segment counts, lengths and
+    widths; start in one of 8 directions, each later segment turns ±45°; a segment is shortened to stay on
+    the board (clamping one axis would bend the angle); at least one diagonal segment.
+  - `ood_4`: L1 trace widths U[0.8, 2.0] mm and at least one trace on L1; L4 traces stay ID.
+  - `ood_6`: 3 or 4 whole heat-sunk edges, uniform.
+  - `ood_7`: h_top and h_bot U[2, 5]; forced zone (p = 0.3 as ID) with h_top U[50, 100].
+  - `ood_bottom_chips`: every chip on the bottom (`bottom_chips_side: all`).
+  - `ood_dense_vias`: p = 0.6 per chip as ID, redrawn until at least one array exists.
+
 ## D3 · Outer-layer G_l dielectric term
 
 - **Decision (2026-10-24):** the missing outer dielectric term is 0, as written in CLAUDE.md §7.2.

@@ -437,6 +437,11 @@ class OodV2(_Model):
     names: Quantity
     samples_per_set: Quantity
     dense_via_threshold: Quantity
+    dense_via_density: Quantity
+    ood_3_shape_types: Quantity
+    l_shape_arm_width: Quantity
+    bottom_chips_side: Quantity
+    ood_3oz_outer_oz: Quantity
 
 
 class SplitsV2(_Model):

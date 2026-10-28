@@ -240,8 +240,8 @@ Edges follow §6.6 and apply to all layers. Unknown index k = l·N² + y·N + x.
 - Thermal via arrays under each chip with p = 0.6, density U[0.2, 1] via/mm². Background signal vias 0–0.05 via/mm².
 - Outer copper 1 or 2 oz; inner 1 oz. Chips 1–4 on L1, 0.1–3 W each, total ≤ 6 W. Envelope θ_max ≤ 100 K by linear rescale.
 - **Design-space component**: half of all training boards come from x ∈ [0,1]³⁶: 4 chip positions (8 numbers), 6 copper rectangles on L1 (24 = 6 × (x, y, w, h)), via density under each chip (4). Fixed parameters (chip sizes, powers, other layers, h, edges) live in `config/design_task.yaml` (open decision D2). Uniform density p₀ on the cube, so the weighted-conformal baseline is exact for the tilted proposer.
-- OOD sets v2 (10 × 500): OOD-1…7 of §6.7 + `ood_bottom_chips` + `ood_3oz` + `ood_dense_vias` (> 1 via/mm²).
-- Splits v2: train 6,000 / val 1,000 / cal 1,000 / test 1,000 + 10 OOD × 500. Fields stored as float16 (about 0.5 MB/board, about 7 GB total); inputs re-rasterised from records.
+- OOD sets v2 (9 × 500): OOD-1…4, 6, 7 of §6.7 + `ood_bottom_chips` + `ood_3oz` (3 oz on L1/L4) + `ood_dense_vias` (1–1.5 via/mm²). OOD-5 is not OOD on 4 layers (L1 contrast is ≈ 170–340× in training); `ood_3oz` is the v2 contrast set (`docs/decisions.md`, "OOD sets v2").
+- Splits v2: train 6,000 / val 1,000 / cal 1,000 / test 1,000 + 9 OOD × 500. Fields stored as float16 (about 0.5 MB/board, about 7 GB total); inputs re-rasterised from records.
 
 ### 7.5 Model I/O v2 (13 → 4 channels)
 Input `[B, 13, 256, 256]` float32, channel order:
@@ -543,7 +543,7 @@ M1 accepted-error rate over all proposals (Lemma 1) and among accepted; M1g the 
 | H10 | verified solver predicts real boards | after fitting h_top, h_bot on board 1 only, held-out hotspot rise within max(2 K, 10 %) | report model-form error with budget |
 
 ### 11.5 Experiments
-E1 solver verification (MMS, energy balance, κ₂ by Lanczos, M-matrix) · E2 kernel roofline · E3 solver comparison (direct, PyAMG-GMRES, Jacobi, red-black, PCG cold/warm; latency + batch throughput) · E4 certify pipeline vs sequential CPU loop (H5) · E5 surrogate accuracy (FNO vs U-Net, ID + 10 OOD, 128→256, energy-loss ablation) · E6 static coverage of conformal bounds ID/OOD · E7 gate validity G0–G7 × P1–P4 × 3 × 5 seeds (H1) · E8 efficiency at equal budget + audit-rate sweep (H2) · E9 Darcy replication (H3) · E10 rendering performance (frame time, headset fps) · E11 anytime-verification latency · E12 pre-registered pilot (H4) · E13 certificate on 4 layers (H6) · E14 certified audits, ε_S sweep (H7) · E15 per-group validity (H8) · E16 risk-adaptive audits, p_min sweep (H9) · E17 hardware validation (H10) · E18 TwinHeat-Traj v1 release.
+E1 solver verification (MMS, energy balance, κ₂ by Lanczos, M-matrix) · E2 kernel roofline · E3 solver comparison (direct, PyAMG-GMRES, Jacobi, red-black, PCG cold/warm; latency + batch throughput) · E4 certify pipeline vs sequential CPU loop (H5) · E5 surrogate accuracy (FNO vs U-Net, ID + 9 OOD, 128→256, energy-loss ablation) · E6 static coverage of conformal bounds ID/OOD · E7 gate validity G0–G7 × P1–P4 × 3 × 5 seeds (H1) · E8 efficiency at equal budget + audit-rate sweep (H2) · E9 Darcy replication (H3) · E10 rendering performance (frame time, headset fps) · E11 anytime-verification latency · E12 pre-registered pilot (H4) · E13 certificate on 4 layers (H6) · E14 certified audits, ε_S sweep (H7) · E15 per-group validity (H8) · E16 risk-adaptive audits, p_min sweep (H9) · E17 hardware validation (H10) · E18 TwinHeat-Traj v1 release.
 For H1, H8 and H9, proposers run on surrogate predictions, so one oracle-labelled trajectory set scores all gates offline. H2 reruns G1 and G5 with feedback. Oracle solves: about 1e5, always to 1e-8.
 
 ### 11.6 Darcy second task

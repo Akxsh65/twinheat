@@ -24,7 +24,7 @@ L_MM = SPEC.geometry.L.value * 1e3
 OZ_M = SPEC1.materials.t_cu.value  # 1 oz = 35 µm (CLAUDE.md §6.3)
 NS = (64, 128, 256)
 SS = SPEC1.discretisation.supersample_per_axis.value
-FIELDS = ("phi", "q", "nu", "h_top", "h_bot", "dirichlet_mask")
+FIELDS = ("phi", "q", "q_bot", "nu", "h_top", "h_bot", "dirichlet_mask")
 
 
 def _board(**over: Any) -> dict[str, Any]:
@@ -122,7 +122,7 @@ def test_total_power_is_conserved(n: int) -> None:
     for rec in [_board(), *BOARDS[:6]]:
         r = rasterise(rec, SPEC, n)
         total = sum(c["P"] for c in rec["chips"])
-        got = r.q.sum() * r.dx**2
+        got = (r.q.sum() + r.q_bot.sum()) * r.dx**2
         assert got == pytest.approx(total, rel=1e-12), f"{rec['id']} N={n}: {got} vs {total} W"
 
 
@@ -292,18 +292,75 @@ def test_rasters_assemble_into_m_matrices() -> None:
 # ------------------------------------------------------------------ fails loudly
 
 
-def test_bottom_side_chips_are_not_implemented_yet() -> None:
+# ------------------------------------------------------------------ OOD support (M1.2)
+
+
+@pytest.mark.parametrize("n", NS)
+def test_bottom_side_chips_go_to_q_bot(n: int) -> None:
     rec = _board()
     rec["chips"][0]["side"] = "bottom"
-    with pytest.raises(NotImplementedError, match="bottom"):
-        rasterise(rec, SPEC, 64)
+    r = rasterise(rec, SPEC, n)
+    top, bot = rec["chips"][1]["P"], rec["chips"][0]["P"]
+    assert r.q.sum() * r.dx**2 == pytest.approx(top, rel=1e-12)
+    assert r.q_bot.sum() * r.dx**2 == pytest.approx(bot, rel=1e-12)
+    assert not np.any((r.q > 0) & (r.q_bot > 0))  # the two chips do not overlap
 
 
-def test_non_manhattan_trace_is_not_implemented_yet() -> None:
+def test_top_only_boards_have_zero_q_bot() -> None:
+    for rec in BOARDS:
+        assert not rasterise(rec, SPEC, 32).q_bot.any(), rec["id"]
+
+
+@pytest.mark.parametrize("n", NS)
+def test_45_degree_trace_area_matches_the_capsule(n: int) -> None:
+    c = 20.0  # per-axis run: length 20·√2 mm
+    trace = {"type": "trace", "points": [[30.0, 30.0], [30.0 + c, 30.0 + c]], "width": 5.0}
+    rec = _board(layers=[
+        {"layer": 1, "shapes": [trace]},
+        {"layer": 2, "plane": True, "cutouts": []},
+        {"layer": 3, "split_rects": []},
+        {"layer": 4, "shapes": []},
+    ])
+    r = rasterise(rec, SPEC, n)
+    length, half, h = c * math.sqrt(2), 2.5, L_MM / (n * SS)
+    area = 2 * half * length + math.pi * half**2
+    perimeter = 2 * length + 2 * math.pi * half
+    got = r.phi[0].sum() * _cell_area_mm2(n)
+    assert abs(got - area) <= h * perimeter + 4 * h * h, f"N={n}: {got} vs {area} mm²"
+
+
+def test_45_degree_trace_is_symmetric_under_every_symmetry() -> None:
+    trace = {"type": "trace", "points": [[12.3, 20.0], [32.3, 40.0], [52.3, 20.0], [52.3, 9.1]],
+             "width": 4.4}
     rec = _board()
-    rec["layers"][0]["shapes"][2]["points"] = [[10.0, 70.0], [30.0, 90.0]]
-    with pytest.raises(NotImplementedError, match="axis-aligned"):
-        rasterise(rec, SPEC, 64)
+    rec["layers"][0]["shapes"][2] = trace
+    for sym in range(8):
+        a = rasterise(transform_record(rec, sym), SPEC, 64)
+        b = transform_array(rasterise(rec, SPEC, 64), sym)
+        assert np.array_equal(a.phi, b.phi), f"sym {sym}"
+
+
+@pytest.mark.parametrize("sym", range(8))
+def test_ood_boards_commute_with_symmetries(sym: int) -> None:
+    for mode in ("ood_3", "ood_4", "ood_bottom_chips", "ood_dense_vias"):
+        for seed in range(3):
+            rec = sample_board(seed, mode)
+            a = rasterise(transform_record(rec, sym), SPEC, 64)
+            b = transform_array(rasterise(rec, SPEC, 64), sym)
+            for f in FIELDS:
+                assert np.array_equal(getattr(a, f), getattr(b, f)), f"{rec['id']} {sym} {f}"
+
+
+@pytest.mark.xfail(strict=True, reason="needs N: solvers/fvm.py does not read Raster.q_bot yet "
+                   "(docs/decisions.md OOD sets v2, point 2). Remove this mark when it does.")
+def test_solver_counts_bottom_chip_heat() -> None:
+    rec = _board()
+    for c in rec["chips"]:
+        c["side"] = "bottom"
+    r = rasterise(rec, SPEC, 32)
+    _, b = assemble_board(SPEC, r, rec["dirichlet_edges"])
+    total = sum(c["P"] for c in rec["chips"])
+    assert b.sum() == pytest.approx(total, rel=1e-9)  # b is in W: Σ (q + q_bot)·Δx²
 
 
 def test_off_grid_geometry_raises() -> None:
