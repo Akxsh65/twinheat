@@ -12,12 +12,33 @@ points to. Changing CLAUDE.md itself needs a PR plus a line in this file.
 
 ## D2 · Fixed parameters of the design task
 
-Open. Owner M, due week 2. Placeholders live in `config/design_task.yaml` until then.
+- **Decision (2026-10-28, M):** `config/design_task.yaml` version 1.
+  - Chips: 12×12 mm 2.0 W, 10×8 mm 1.5 W, 8×8 mm 1.0 W, 6×6 mm 0.5 W (total 5 W, cap 6 W). One dominant
+    chip and unequal sizes make placement matter; all inside the §6.5 ranges.
+  - Stack 1 oz on every layer, k_FR4,xy = 0.81 (nominal). L2 full plane; L3 two halves split at x = 50 mm;
+    L4 one 40 × 50 mm pour (20 %, inside the §7.4 L4 range 5–40 %, which a bare L4 would leave).
+  - Background vias 0.02 /mm² (middle of 0–0.05). Still air, h_top = h_bot = 10 W/(m²·K), no forced zone,
+    **no heat-sunk edge**: matches the E17 rig (boards on standoffs in still air, §14) and the pilot.
+  - Mapping: rect sides 5–40 mm and via density 0–1 /mm² (the ID ranges); `enforce_l1_coverage: true`.
+- **Evidence (decision support only, not a report number; 150 feasible random x per option, N = 64,
+  `solvers/fvm.py` direct solve, scratch script, 2026-10-28):**
+
+  | Option | Feasible x | Peak rise P5 / P50 / P95 (K) | > 100 K |
+  |---|---|---|---|
+  | v0 placeholders (4 W) | 71 % | 34 / 40 / 48 | 0 % |
+  | **chosen (5 W, no heat sink)** | 65 % | 42 / 49 / 58 | 0 % |
+  | chosen + heat-sunk W edge | 65 % | 29 / 40 / 53 | 0 % |
+  | chosen at 6 W | 65 % | 49 / 59 / 71 | 0 % |
+
+  No design reached the 100 K envelope, so rescaling (which would change the task's fixed powers) never
+  triggers. A heat-sunk edge spreads peaks more (P95/P5 ≈ 1.8 vs 1.4) but makes "push the chips to the
+  edge" the obvious optimum. The L1 coverage check rejected no extra designs.
+- **Owners to confirm:** M (decided); G (that the fabricated E17 boards and the pilot use the same setting).
 
 - **Sampler v0 behaviour (2026-10-24, M):** `design_board(x)` raises `InfeasibleDesignError` when chips break
   the §6.5 gap or edge margin, and `sample_board(seed, "design")` draws x ~ U[0,1]³⁶ by rejection. p₀ is
   therefore uniform on the **feasible** part of the cube, not the whole cube. That matters for G3's "exact"
-  weights for P1 (§7.4), and must be revisited when D2 is fixed.
+  weights for P1 (§7.4). With D2 fixed, about 35 % of uniform x are infeasible (table above).
 
 ## Sampler v0 defaults (2026-10-24, UNSURE, M to confirm)
 
