@@ -18,9 +18,8 @@ four-variant table.**
 | `explainer_cert_widget_results.csv` | Output of `node explainer_cert_widget.js` (node v22.19.0). Running it again gives this file byte for byte (checked 2026-10-30). |
 
 Checked on 2026-10-30: every code block above the harness appears verbatim (whitespace-normalised) in
-`TwinHeat_Pitch.html`.
-
-| `widget_board.py` | The widget's board and emulated prediction ported to Python (bit-exact xorshift32 RNG). |
+`TwinHeat_Pitch.html`. `widget_board.py` ports the widget's board and emulated prediction to Python
+(bit-exact xorshift32 RNG).
 
 **Cross-check of N's code (`tests/test_prelim_widget.py`).** On the widget's board, `solvers/fvm.py`
 gives the same peak rise and true ‖A⁻¹‖∞ as the JS. With the widget's κ̂, `certify/stopping.py`
