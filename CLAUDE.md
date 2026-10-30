@@ -309,7 +309,7 @@ Pointwise certificate, Lemma 2(c), on the prediction itself:
 | 3 % | 0 | 2.95 | 1,200 | 125 | 42× |
 | 3 % | 5 | 1.87 | 40 | 3.16 | 1.7× |
 | 3 % | 10 | 1.69 | 35 | 2.56 | 1.5× |
-With noisier emulated errors: 59–66 % fewer iterations at 1 K, 44–51 % at 0.1 K, zero violations (H6's 50 % bar at 0.1 K is at risk, see D1). Learned certificates failed validity in most trials and are not claimed. Scripts: `bench/prelim/stop.js`, `cert.js` (must be committed to the repo).
+With noisier emulated errors: 59–66 % fewer iterations at 1 K, 44–51 % at 0.1 K, zero violations (H6's 50 % bar at 0.1 K is at risk, see D1). Learned certificates failed validity in most trials and are not claimed. The 5 Oct scripts (`stop.js`, `cert.js`) were never saved; `bench/prelim/` holds the surviving widget, a cross-check, and `reproduce.py`, a declared re-run that is new evidence, not a reproduction (`docs/decisions.md`, "§8.6 preliminary evidence").
 
 ---
 
@@ -592,7 +592,7 @@ Key fallbacks: q oscillates → smaller γ, larger W, p = 0.2 early then 0.1 · 
 ### 16.1 Core citations (verified in Phase 0)
 DeepOHeat-v2 (Yu et al., arXiv 2608.16080, 2026) · Gibbs & Candès, ACI, NeurIPS 2021 · Tu & Giesecke, arXiv 2605.17705 (2026) · Ma & Zhao, arXiv 2608.01378 (2026) · Xu, Karampatziakis & Mineiro, NeurIPS 2024 · Zrnic & Candès, ICML 2024 · Li, Zrnic & Candès, NeurIPS 2025 · Bastani et al., Multivalid CP, NeurIPS 2022 · Lekeufack et al., Conformal Decision Theory · Fannjiang et al., PNAS 2022 · Choi, ICML 2026 · Tibshirani et al. 2019 · Meurant & Tichý 2018 · Varah 1975 · Astral (ICLR 2026) · Hillebrecht & Unger 2023 · Chin 2026 · Li et al., FNO, ICLR 2021 · PDEBench (Takamoto et al. 2022) · McGreivy & Hakim 2024 · NOWS 2025 · Cresswell et al., ICML 2024 · Correll, Moritz & Heer, VSUP, CHI 2018 · Cabral & Leedom, LIC 1993 · Zhang & Chen, PLOS ONE 2024 · IC-ThermBench 2026. Full list: Phase 0 §1 and plan §16/§20.
 ### 16.2 `docs/refs/` (humans add these; Claude reads them, never reconstructs them)
-`deepoheat_v2_alg1.txt` (Algorithm 1 text) · `bastani2022_mvp.txt` (MultiValid algorithm) · `gibbs_candes_prop41.txt` (Lemma 4.1 + Prop. 4.1), `tu_giesecke_thm54_56.txt` (theorem statements; must be taken from **v2**: Prop. 5.5, Assumptions 5.6/5.8, Thm 5.9, Props 5.7, B.14, B.15; see D12) · `pdebench_darcy_fno.txt` (published FNO Darcy error) · `cie1931_2deg_5nm.csv` · `planckian_locus_check.csv` (reference chromaticities) · `fab_stackup.txt` · `camera_datasheet.pdf` · `bench/prelim/stop.js`, `cert.js` (preliminary prototypes).
+`deepoheat_v2_alg1.txt` (Algorithm 1 text) · `bastani2022_mvp.txt` (MultiValid algorithm) · `gibbs_candes_prop41.txt` (Lemma 4.1 + Prop. 4.1), `tu_giesecke_thm54_56.txt` (theorem statements; must be taken from **v2**: Prop. 5.5, Assumptions 5.6/5.8, Thm 5.9, Props 5.7, B.14, B.15; see D12) · `pdebench_darcy_fno.txt` (published FNO Darcy error) · `cie1931_2deg_5nm.csv` · `planckian_locus_check.csv` (reference chromaticities) · `fab_stackup.txt` · `camera_datasheet.pdf` · `bench/prelim/` (surviving 5 Oct widget; the original `stop.js`, `cert.js` were never saved, see `docs/decisions.md`).
 
 ## 17 · Open decisions (Claude must ask, not assume)
 | ID | Decision | Owner | Due |

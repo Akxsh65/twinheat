@@ -6,7 +6,7 @@
  * milder error model ("smooth blobs with mild ringing and noise"), while this widget adds stronger copper-edge
  * ringing and cell-level noise. It reproduces the pitch's "noisier emulated errors" figures (Phase 0 sec. 3.0 /
  * CLAUDE.md sec. 8.6 last paragraph), not the four-variant table.
- * Board: TH.defaultBoard() (64^2, K_FR4 0.9, h 24 W/m2K both faces combined, 2 oz painted copper, left edge
+ * Board: TH.defaultBoard() (64^2, K_FR4 0.9, h 24 W/m2K both faces combined, cuOz 2 x 17.5 um = 35 um (1 oz) painted copper, left edge
  * heat-sunk) -- differs from spec_v1 sec. 6.5 sampler boards.
  * Run: node explainer_cert_widget.js
  */

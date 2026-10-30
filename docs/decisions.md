@@ -97,6 +97,31 @@ changing one is a YAML edit plus a line here. Records generated before a change 
   - `ood_bottom_chips`: every chip on the bottom (`bottom_chips_side: all`).
   - `ood_dense_vias`: p = 0.6 per chip as ID, redrawn until at least one array exists.
 
+## §8.6 preliminary evidence (N1.3)
+
+- **Proposed (2026-10-30, M); N to confirm by approving PR #15.**
+- **Finding: the scripts were never saved.** `bench/prelim/stop.js` and `cert.js`, named by plan v3.1 (5 Oct) and by
+  CLAUDE.md §8.6, were never saved. They are in no repo branch, on no local disk, and in neither source chat; the
+  numbers were most likely computed inline in a chat's analysis tool. What survives is the explainer's solver and
+  certificate widget (`bench/prelim/explainer_cert_widget.js`, verbatim from `TwinHeat_Pitch.html`) and its
+  `emulate()` error model.
+- **Finding: the table is genuine.** Its κ̂ ÷ true ‖A⁻¹‖∞ column depends only on A. On the surviving solver it
+  reproduces to three decimals for the default (1.067), no-heat-sink (1.069) and four-chip (1.067) variants. The
+  widget's "noisier errors" figures in §8.6's last paragraph reproduce exactly, and N's `solvers/` + `certify/`
+  match the widget iteration for iteration (`tests/test_prelim_widget.py`).
+- **Decision: no reproduction claim.** The four-variant table and the pointwise table are reported only as "5 Oct,
+  scripts lost". The milder error model and variants 3–4 are not reconstructed from the numbers (CLAUDE.md §0 rule 12).
+- **Decision: a declared re-run is the N1.3 deliverable.** `bench/prelim/reproduce.py` fixes every setting in code,
+  committed before its first run:
+  - the `emulate()` blob-and-ringing shape (ported, checked against the JS to about 1e-16), plus noise at 2 % of its
+    maximum, scaled so max|μ − θ| equals the row's warm-start error;
+  - variant 3 is a 5 × 5-cell, 0.5 W chip near the N-E corner;
+  - variant 4 is 17.5 µm copper and H = 10 W/(m²·K) combined.
+
+  Its CSVs are new preliminary evidence and are compared with §8.6 in the PR, not fitted to it. E13 (4 layers,
+  trained FNO) remains the real test of H6.
+- **Owners:** N + M.
+
 ## D3 · Outer-layer G_l dielectric term
 
 - **Decision (2026-10-24):** the missing outer dielectric term is 0, as written in CLAUDE.md §7.2.

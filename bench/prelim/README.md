@@ -55,7 +55,7 @@ Source files (kept outside git, large; SHA-256):
 - **Board.** The widget's board is `TH.defaultBoard()`, which is not a spec_v1 sampler board:
   - 64² cells, k_FR4 = 0.9 (spec_v1 nominal is 0.81)
   - total face loss H = 24 W/(m²·K)
-  - 2 oz painted copper
+  - painted copper 35 µm (1 oz): the widget's `cuOz = 2` counts 17.5 µm units
   - left edge heat-sunk
   - three chips (1.2, 0.8 and 0.5 W)
 - **Error model.** Seed `TH.rng(7)`. The emulated prediction is

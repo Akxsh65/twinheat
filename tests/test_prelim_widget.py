@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 import scipy.sparse.linalg as spla
 
+from bench.prelim.widget_board import CHIPS as CHIPS_DEFAULT
 from bench.prelim.widget_board import EDGES, board_fields, emulated_prediction, xorshift32
 from certify.kappa import kappa_hat
 from certify.stopping import jacobi, pcg_certified
@@ -86,3 +87,25 @@ def test_iterations_match_the_widget_and_bounds_hold(system, row) -> None:
         history=lambda k, x, c: covered.append(c >= np.abs(x - theta).max() * (1 - 1e-9)))
     assert it == int(row["it_cert"]) and cert is not None and cert <= float(row["tau"])
     assert all(covered), "a certified bound fell below the true error (B7)"
+
+
+def test_milder_prediction_has_the_declared_error_level(system) -> None:
+    from bench.prelim.reproduce import VARIANTS, milder_prediction
+    from bench.prelim.widget_board import CHIPS
+
+    phi, _, _, theta, _ = system
+    for lvl in (0.01, 0.02, 0.05):
+        mu = milder_prediction(theta, phi, CHIPS, lvl)
+        assert np.abs(mu - theta).max() == pytest.approx(lvl * theta.max(), rel=1e-12)
+        assert np.array_equal(mu, milder_prediction(theta, phi, CHIPS, lvl))  # deterministic
+    assert set(VARIANTS) == {"default_one_heat_sunk_edge", "no_heat_sunk_edge",
+                             "four_chips_one_near_a_corner", "thin_copper_weak_convection"}
+
+
+def test_widget_board_defaults_are_the_widget_board(system) -> None:
+    from bench.prelim.widget_board import board_fields as bf
+
+    phi, A, *_ = system
+    p2, G, H, q, dx = bf(chips=CHIPS_DEFAULT, cu_oz=2, h_base=24.0)
+    A2, _ = assemble_plate(G, H, q, dx, EDGES)
+    assert np.array_equal(phi, p2) and (A != A2).nnz == 0
