@@ -20,6 +20,25 @@ four-variant table.**
 Checked on 2026-10-30: every code block above the harness appears verbatim (whitespace-normalised) in
 `TwinHeat_Pitch.html`.
 
+| `widget_board.py` | The widget's board and emulated prediction ported to Python (bit-exact xorshift32 RNG). |
+
+**Cross-check of N's code (`tests/test_prelim_widget.py`).** On the widget's board, `solvers/fvm.py`
+gives the same peak rise and true ‖A⁻¹‖∞ as the JS. With the widget's κ̂, `certify/stopping.py`
+certifies at exactly the widget's iteration count in all 9 rows, and every bound covers the true error.
+`certify/kappa.py` (pyamg multigrid) gives a valid κ̂ that is tighter than the widget's. Expected
+values are read from the CSV.
+
+**Is the §8.6 table genuine?** The κ̂ ÷ true ‖A⁻¹‖∞ column depends only on the matrix (board and
+edges), not on the error model. On this solver it reproduces three of the four rows to the printed
+three decimals, with no fitting:
+- the widget's default board, which has one heat-sunk edge: 1.067
+- the same board with no heat-sunk edge: 1.069
+- a fourth chip added: 1.067, unchanged, because q does not enter A
+
+(Diagnostic run on 2026-10-30, not a report number.) So the table was computed on this solver. What
+was never saved is the code for the milder error model and the board variants, which is what
+`stop.js` / `cert.js` would have held.
+
 Source files (kept outside git, large; SHA-256):
 
 | File | Date | SHA-256 |
