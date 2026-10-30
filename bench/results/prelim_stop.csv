@@ -1,0 +1,5 @@
+variant,warm_start_error,peak_K,iters_to_1e-8,kappa_over_true_inv,certified_le_1K,saved_at_1K,bound_over_true_error_at_stop,certified_le_0.1K,commit,date,hardware
+default_one_heat_sunk_edge,0.02,72.7544,174,1.02389,50,0.712644,19.4443,84,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
+no_heat_sunk_edge,0.02,72.7652,187,1.02992,49,0.737968,17.3507,91,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
+four_chips_one_near_a_corner,0.05,80.1015,169,1.02389,46,0.727811,14.8305,76,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
+thin_copper_weak_convection,0.02,109.265,197,1.03295,64,0.675127,24.373,96,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
