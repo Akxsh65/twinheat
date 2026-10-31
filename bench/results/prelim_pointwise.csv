@@ -1,0 +1,7 @@
+emulated_error,gs_sweeps,true_worst_error_K,varah_bound_K,pointwise_cert_K,cert_over_true,commit,date,hardware
+0.01,0,0.727544,280.723,27.3505,37.5929,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
+0.01,5,0.451947,9.38268,0.96483,2.13483,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
+0.01,10,0.4258,4.13592,0.54273,1.27461,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
+0.03,0,2.18263,842.168,82.0515,37.5929,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
+0.03,5,1.35584,28.148,2.89449,2.13483,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
+0.03,10,1.2774,12.4078,1.62819,1.27461,171d799,2026-10-30,"Windows-10-10.0.26200-SP0 Intel64 Family 6 Model 189 Stepping 1, GenuineIntel"
