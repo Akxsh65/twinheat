@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "Manufacturing inputs for hardware/kicad/gen_board.py (G1.1). JSON, not YAML: KiCad's bundled",
+    "Python has no PyYAML. null = not decided yet: the generator refuses to run and names every null.",
+    "Values marked FROM PROMPT come from the G1.1 prompt / CLAUDE.md §14. Values marked CHECK are",
+    "KiCad 8 library names to confirm in KiCad. Fill the nulls from the chosen part's datasheet and the",
+    "chosen fab's capability page, and record the source in docs/equipment.md."
+  ],
+  "board": {
+    "size_mm": 100.0,
+    "thickness_mm": 1.6,
+    "copper_layers": ["F.Cu", "In1.Cu", "In2.Cu", "B.Cu"]
+  },
+  "resistor": {
+    "footprint": "Resistor_SMD:R_2512_6332Metric",
+    "body_mm": [6.3, 3.2],
+    "part": null,
+    "rated_W": null,
+    "max_fraction_of_rated": 0.5,
+    "_notes": "footprint CHECK; body_mm from the 6332 metric code of a 2512 (6.3 x 3.2 mm); max_fraction FROM PROMPT (<= 50 % of rated, CLAUDE.md §14); part and rated_W from the datasheet (1 W and 2 W 2512 parts exist, docs/pcb_realism.md)"
+  },
+  "test_pad": {
+    "footprint": "TestPoint:TestPoint_Pad_D2.0mm",
+    "_notes": "CHECK; two per heater (supply + return), FROM PROMPT"
+  },
+  "fiducial": {
+    "footprint": "Fiducial:Fiducial_1mm_Mask2mm",
+    "positions_mm": [[5.0, 5.0], [95.0, 5.0], [95.0, 95.0], [5.0, 95.0]],
+    "mask_diameter_mm": 2.0,
+    "_notes": "1 mm copper dot, 2 mm mask opening, positions in record coordinates (origin lower-left, y up): FROM PROMPT / CLAUDE.md §14; footprint CHECK"
+  },
+  "via": {
+    "drill_mm": 0.3,
+    "pad_mm": 0.6,
+    "_notes": "FROM PROMPT"
+  },
+  "supply_track_width_mm": null,
+  "fab": {
+    "name": null,
+    "min_clearance_mm": null,
+    "min_track_mm": null,
+    "min_annular_ring_mm": null,
+    "min_hole_to_hole_mm": null,
+    "copper_edge_clearance_mm": null,
+    "_notes": "all from the chosen fab's capability page (G1.2); supply_track_width_mm from the heater current (IPC-2152-style calculator) once the part and supply voltage are fixed"
+  }
+}

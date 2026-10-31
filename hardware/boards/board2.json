@@ -1,0 +1,131 @@
+{
+  "schema_version": "1.0",
+  "id": "hw-board2",
+  "seed": 0,
+  "mode": "ood_hardware",
+  "stack": {
+    "outer_oz": 1,
+    "inner_oz": 1,
+    "k_fr4_xy": 0.81
+  },
+  "layers": [
+    {
+      "layer": 1,
+      "shapes": [
+        {
+          "type": "rect",
+          "x0": 10.0,
+          "y0": 35.0,
+          "w": 40.0,
+          "h": 30.0
+        },
+        {
+          "type": "rect",
+          "x0": 52.0,
+          "y0": 62.0,
+          "w": 30.0,
+          "h": 20.0
+        },
+        {
+          "type": "disc",
+          "cx": 30.0,
+          "cy": 15.0,
+          "r": 10.0
+        }
+      ]
+    },
+    {
+      "layer": 2,
+      "plane": true,
+      "cutouts": []
+    },
+    {
+      "layer": 3,
+      "split_rects": [
+        {
+          "type": "rect",
+          "x0": 0.0,
+          "y0": 0.0,
+          "w": 50.0,
+          "h": 100.0
+        },
+        {
+          "type": "rect",
+          "x0": 50.0,
+          "y0": 0.0,
+          "w": 50.0,
+          "h": 100.0
+        }
+      ]
+    },
+    {
+      "layer": 4,
+      "shapes": [
+        {
+          "type": "rect",
+          "x0": 30.0,
+          "y0": 25.0,
+          "w": 40.0,
+          "h": 50.0
+        }
+      ]
+    }
+  ],
+  "chips": [
+    {
+      "x0": 20.0,
+      "y0": 45.0,
+      "w": 6.3,
+      "h": 3.2,
+      "P": 0.5,
+      "side": "top"
+    },
+    {
+      "x0": 60.0,
+      "y0": 70.0,
+      "w": 6.3,
+      "h": 3.2,
+      "P": 0.5,
+      "side": "top"
+    },
+    {
+      "x0": 62.0,
+      "y0": 22.0,
+      "w": 6.3,
+      "h": 3.2,
+      "P": 0.5,
+      "side": "top"
+    }
+  ],
+  "via_arrays": [
+    {
+      "x0": 17.15,
+      "y0": 41.6,
+      "w": 12.0,
+      "h": 10.0,
+      "density_per_mm2": 1.0
+    },
+    {
+      "x0": 57.15,
+      "y0": 66.6,
+      "w": 12.0,
+      "h": 10.0,
+      "density_per_mm2": 1.0
+    },
+    {
+      "x0": 59.15,
+      "y0": 18.6,
+      "w": 12.0,
+      "h": 10.0,
+      "density_per_mm2": 0.5
+    }
+  ],
+  "background_via_density_per_mm2": 0.02,
+  "convection": {
+    "h_top": 10.0,
+    "h_bot": 10.0,
+    "forced_zone": null
+  },
+  "dirichlet_edges": [],
+  "design_vector": null
+}

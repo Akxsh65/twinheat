@@ -1,0 +1,150 @@
+{
+  "schema_version": "1.0",
+  "id": "hw-board3",
+  "seed": 0,
+  "mode": "ood_hardware",
+  "stack": {
+    "outer_oz": 1,
+    "inner_oz": 1,
+    "k_fr4_xy": 0.81
+  },
+  "layers": [
+    {
+      "layer": 1,
+      "shapes": [
+        {
+          "type": "trace",
+          "points": [
+            [
+              30.0,
+              46.6
+            ],
+            [
+              50.0,
+              46.6
+            ],
+            [
+              50.0,
+              15.0
+            ]
+          ],
+          "width": 5.0
+        },
+        {
+          "type": "trace",
+          "points": [
+            [
+              69.0,
+              71.6
+            ],
+            [
+              92.0,
+              71.6
+            ],
+            [
+              92.0,
+              88.0
+            ]
+          ],
+          "width": 5.0
+        },
+        {
+          "type": "trace",
+          "points": [
+            [
+              65.15,
+              28.0
+            ],
+            [
+              65.15,
+              40.0
+            ],
+            [
+              35.0,
+              40.0
+            ]
+          ],
+          "width": 4.0
+        },
+        {
+          "type": "rect",
+          "x0": 8.0,
+          "y0": 70.0,
+          "w": 25.0,
+          "h": 20.0
+        }
+      ]
+    },
+    {
+      "layer": 2,
+      "plane": true,
+      "cutouts": []
+    },
+    {
+      "layer": 3,
+      "split_rects": [
+        {
+          "type": "rect",
+          "x0": 0.0,
+          "y0": 0.0,
+          "w": 50.0,
+          "h": 100.0
+        },
+        {
+          "type": "rect",
+          "x0": 50.0,
+          "y0": 0.0,
+          "w": 50.0,
+          "h": 100.0
+        }
+      ]
+    },
+    {
+      "layer": 4,
+      "shapes": [
+        {
+          "type": "rect",
+          "x0": 30.0,
+          "y0": 25.0,
+          "w": 40.0,
+          "h": 50.0
+        }
+      ]
+    }
+  ],
+  "chips": [
+    {
+      "x0": 20.0,
+      "y0": 45.0,
+      "w": 6.3,
+      "h": 3.2,
+      "P": 0.5,
+      "side": "top"
+    },
+    {
+      "x0": 60.0,
+      "y0": 70.0,
+      "w": 6.3,
+      "h": 3.2,
+      "P": 0.5,
+      "side": "top"
+    },
+    {
+      "x0": 62.0,
+      "y0": 22.0,
+      "w": 6.3,
+      "h": 3.2,
+      "P": 0.5,
+      "side": "top"
+    }
+  ],
+  "via_arrays": [],
+  "background_via_density_per_mm2": 0.02,
+  "convection": {
+    "h_top": 10.0,
+    "h_bot": 10.0,
+    "forced_zone": null
+  },
+  "dirichlet_edges": [],
+  "design_vector": null
+}

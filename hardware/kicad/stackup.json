@@ -1,0 +1,140 @@
+{
+  "hw-board1": {
+    "board_id": "hw-board1",
+    "layers": [
+      {
+        "name": "F.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 1",
+        "type": "prepreg",
+        "thickness_mm": 0.2
+      },
+      {
+        "name": "In1.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 2",
+        "type": "core",
+        "thickness_mm": 1.06
+      },
+      {
+        "name": "In2.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 3",
+        "type": "prepreg",
+        "thickness_mm": 0.2
+      },
+      {
+        "name": "B.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      }
+    ],
+    "total_mm": 1.6,
+    "source": "config/spec_v2.yaml stack (CLAUDE.md \u00a77.1) + record stack copper weights"
+  },
+  "hw-board2": {
+    "board_id": "hw-board2",
+    "layers": [
+      {
+        "name": "F.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 1",
+        "type": "prepreg",
+        "thickness_mm": 0.2
+      },
+      {
+        "name": "In1.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 2",
+        "type": "core",
+        "thickness_mm": 1.06
+      },
+      {
+        "name": "In2.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 3",
+        "type": "prepreg",
+        "thickness_mm": 0.2
+      },
+      {
+        "name": "B.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      }
+    ],
+    "total_mm": 1.6,
+    "source": "config/spec_v2.yaml stack (CLAUDE.md \u00a77.1) + record stack copper weights"
+  },
+  "hw-board3": {
+    "board_id": "hw-board3",
+    "layers": [
+      {
+        "name": "F.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 1",
+        "type": "prepreg",
+        "thickness_mm": 0.2
+      },
+      {
+        "name": "In1.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 2",
+        "type": "core",
+        "thickness_mm": 1.06
+      },
+      {
+        "name": "In2.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      },
+      {
+        "name": "dielectric 3",
+        "type": "prepreg",
+        "thickness_mm": 0.2
+      },
+      {
+        "name": "B.Cu",
+        "type": "copper",
+        "oz": 1,
+        "thickness_mm": 0.035
+      }
+    ],
+    "total_mm": 1.6,
+    "source": "config/spec_v2.yaml stack (CLAUDE.md \u00a77.1) + record stack copper weights"
+  }
+}
