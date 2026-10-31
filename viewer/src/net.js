@@ -41,13 +41,27 @@ function sameBits(a, b) {
   return true;
 }
 
-/** The 4 layer textures plus the colour range (K) of the field they show. */
+/**
+ * The 4 layer textures plus the colour range (K) of the field they show, and a CPU-side Float32
+ * copy of the same values ([layer, y, x], K) for the probe (src/probe.js).
+ */
 export class LayerTextures {
   constructor() {
     this.n = 1;
     this.min = 0;
     this.max = 0;
     this.textures = Array.from({ length: N_LAYERS }, () => makeTexture(1, new Uint16Array(1)));
+    this.values = new Float32Array(N_LAYERS);
+  }
+
+  /** θ (K) at layer l (0 = L1), row y (0 = south), column x (0 = west), exactly as displayed. */
+  valueAt(l, y, x) {
+    const n = this.n;
+    if (!(Number.isInteger(l) && l >= 0 && l < N_LAYERS)) throw new RangeError(`layer must be 0..${N_LAYERS - 1}, got ${l}`);
+    if (!(Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < n && y < n)) {
+      throw new RangeError(`cell (x ${x}, y ${y}) outside the ${n} x ${n} grid`);
+    }
+    return this.values[(l * n + y) * n + x];
   }
 
   /**
@@ -68,6 +82,7 @@ export class LayerTextures {
         return makeTexture(n, bits.slice(l * per, (l + 1) * per));
       });
       this.n = n;
+      this.values = new Float32Array(N_LAYERS * per);
     } else {
       this.textures.forEach((t, l) => {
         const slice = bits.subarray(l * per, (l + 1) * per);
@@ -76,6 +91,10 @@ export class LayerTextures {
         t.needsUpdate = true;
         updated.push(l);
       });
+    }
+    const table = halfTable();
+    for (const l of updated) {
+      for (let i = l * per; i < (l + 1) * per; i++) this.values[i] = table[bits[i]];
     }
     this.min = min;
     this.max = max;

@@ -37,6 +37,16 @@
         right: 8px;
         padding: 6px 8px;
         background: rgba(0, 0, 0, 0.6);
+        display: grid;
+        gap: 4px;
+      }
+      #probe {
+        position: absolute;
+        padding: 3px 6px;
+        font: 12px/1.3 ui-monospace, monospace;
+        background: rgba(0, 0, 0, 0.75);
+        pointer-events: none;
+        white-space: nowrap;
       }
     </style>
   </head>
@@ -44,10 +54,29 @@
     <div id="app"></div>
     <pre id="dev-overlay"></pre>
     <div id="controls">
-      <label for="gap">layer gap</label>
-      <input id="gap" type="range" min="0" step="0.005" />
-      <span id="gap-value"></span>
+      <div>
+        <label for="gap">layer gap</label>
+        <input id="gap" type="range" min="0" step="0.005" />
+        <span id="gap-value"></span>
+      </div>
+      <div>
+        <label for="lut">colour map</label>
+        <select id="lut"></select>
+      </div>
+      <div>
+        <label for="iso">isolines</label>
+        <select id="iso">
+          <option value="auto" selected>auto</option>
+          <option value="0">off</option>
+          <option value="0.5">every 0.5 K</option>
+          <option value="1">every 1 K</option>
+          <option value="2">every 2 K</option>
+          <option value="5">every 5 K</option>
+          <option value="10">every 10 K</option>
+        </select>
+      </div>
     </div>
+    <div id="probe" hidden></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

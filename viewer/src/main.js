@@ -5,7 +5,9 @@
 //                 ?inline      parse / validate / decode on the main thread (no worker; debugging)
 
 import { createDevOverlay } from "./devOverlay.js";
+import { DEFAULT_LUT, LUT_NAMES } from "./lut.js";
 import { connect, createHandler, LayerTextures } from "./net.js";
+import { createProbe } from "./probe.js";
 import { createScene, GAP_DEFAULT_M, GAP_MAX_M } from "./scene.js";
 
 const params = new URLSearchParams(window.location.search);
@@ -29,6 +31,23 @@ function onGap() {
 }
 gap.addEventListener("input", onGap);
 onGap();
+
+const lutSelect = document.getElementById("lut");
+for (const name of LUT_NAMES) lutSelect.add(new Option(name, name, name === DEFAULT_LUT, name === DEFAULT_LUT));
+lutSelect.addEventListener("change", () => view.setLut(lutSelect.value));
+
+const isoSelect = document.getElementById("iso");
+isoSelect.addEventListener("change", () => {
+  view.setIsoStep(isoSelect.value === "auto" ? "auto" : Number(isoSelect.value));
+});
+
+createProbe({
+  camera: view.camera,
+  planes: view.planes,
+  textures,
+  dom: view.renderer.domElement,
+  tooltip: document.getElementById("probe"),
+});
 
 const worker = inline ? null : new Worker(new URL("./net.worker.js", import.meta.url), { type: "module" });
 connect(wsUrl, handle, { worker, onState: (s) => overlay.setConnection(`${s} ${wsUrl}`) });
