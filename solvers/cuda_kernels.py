@@ -35,6 +35,7 @@ __all__ = [
 ]
 
 TB = 16  # tile side (§9.4): 16 × 16 threads, an 18 × 18 shared tile with halos
+TBH = TB + 2  # shared-tile side; a module constant so numba types the shape as a literal
 DOT_BLOCK = 256  # threads per block in the dot kernel (8 warps)
 WARP = 32
 FULL_MASK = 0xFFFFFFFF
@@ -179,7 +180,7 @@ def stencil_apply_naive(c: StencilCoeffs, x, out=None):
 def _make_tiled(nb_dtype):
     @cuda.jit
     def kernel(Ge, Gw, Gn, Gs, gup, gdn, diag, x, y):
-        s = cuda.shared.array((TB + 2, TB + 2), nb_dtype)  # [y, x] with a 1-cell halo
+        s = cuda.shared.array((TBH, TBH), nb_dtype)  # [y, x] with a 1-cell halo
         tx = cuda.threadIdx.x
         ty = cuda.threadIdx.y
         i = cuda.blockIdx.x * TB + tx
