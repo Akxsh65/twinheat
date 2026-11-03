@@ -38,6 +38,7 @@ TB = 16  # tile side (§9.4): 16 × 16 threads, an 18 × 18 shared tile with hal
 TBH = TB + 2  # shared-tile side; a module constant so numba types the shape as a literal
 DOT_BLOCK = 256  # threads per block in the dot kernel (8 warps)
 WARP = 32
+DOT_WARPS = DOT_BLOCK // WARP  # per-block warp sums; a module constant for the same reason as TBH
 FULL_MASK = 0xFFFFFFFF
 DOT_MAX_BLOCKS = 1024  # grid-stride cap for the dot kernel
 FIELDS = ("Ge", "Gw", "Gn", "Gs", "gup", "gdn", "diag")
@@ -297,7 +298,7 @@ def red_black_gs_sweep(c: StencilCoeffs, x, rhs) -> None:
 def _dot_rows(a, b, out):
     """out[row] += Σ_k a[row, k]·b[row, k] in float64: grid-stride sum, warp shuffle, then the
     per-warp sums through shared memory, then one atomic add per block."""
-    warp_sums = cuda.shared.array(DOT_BLOCK // WARP, float64)
+    warp_sums = cuda.shared.array(DOT_WARPS, float64)
     row = cuda.blockIdx.y
     tid = cuda.threadIdx.x
     n = a.shape[1]
@@ -317,7 +318,7 @@ def _dot_rows(a, b, out):
         warp_sums[warp] = acc
     cuda.syncthreads()
     if warp == 0:
-        acc = warp_sums[lane] if lane < DOT_BLOCK // WARP else 0.0
+        acc = warp_sums[lane] if lane < DOT_WARPS else 0.0
         off = WARP // 2
         while off > 0:
             acc += cuda.shfl_down_sync(FULL_MASK, acc, off)
