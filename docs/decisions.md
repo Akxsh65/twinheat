@@ -123,3 +123,14 @@ Open. Owners N + M, due week 3 (exact solve ≥ 0.3 s keeps 256² × 4 layers).
 - **GPU access (2026-10-24):** Kaggle and Colab runs of `scripts/check_gpu.py` are skipped for now, since
   college GPU access may be available. One Kaggle 2×T4 run is on record in `docs/compute.md`.
 - 2026-10-24 · CLAUDE.md: added §18 (implementation notes from the literature survey, distilled from the eight study guides), open decisions D7–D14 in §17, and cross-references in §8.2 (Tu & Giesecke v2 numbering note), §8.4, §8.5, §11.1 (G1, G2 rows) and §16.2. No existing constant, invariant or decision changed. Branch `m/claude-md-survey-notes`; needs PR review by N and M.
+
+## Dataset v1 split seeds (N2.1)
+
+- **Decision (2026-11-04):** every released split uses seed `2026` (per-board seed =
+  SHA-256(split, seed, i), so the split name separates splits). Seed 0 is the 200-board pilot
+  only and is never released. Splits: train 6,000, val 1,000, cal 1,000, test 1,000; OOD 500 each
+  for ood_1, ood_2, ood_3, ood_4, ood_6, ood_7, ood_3oz, ood_dense_vias. Not generated:
+  ood_5 (dropped on 4 layers, see "OOD sets v2") and ood_bottom_chips (generator refuses until
+  solvers/fvm.py reads q_bot).
+- **Pilot (seed 0, 200 boards, A100 GPU 0 on rvcse, commit 743c726):** reviewed by M and N.
+- **Owners to confirm:** N + M.
