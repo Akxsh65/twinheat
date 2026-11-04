@@ -134,3 +134,11 @@ Open. Owners N + M, due week 3 (exact solve ≥ 0.3 s keeps 256² × 4 layers).
   solvers/fvm.py reads q_bot).
 - **Pilot (seed 0, 200 boards, A100 GPU 0 on rvcse, commit 743c726):** reviewed by M and N.
 - **Owners to confirm:** N + M.
+
+## Dataset v1: OOD-2 envelope rescale above 20 % (N2.1), 2026-11-04
+ood_2 (3-6 W per chip, total <= 12 W): 41.0 % of 500 boards rescaled to theta_max = 100 K
+(dataset_v1, commit da2c2b6); the generator exited with status 2 as designed. All other
+splits <= 7.0 % (ID splits 0.4-1.2 %, ood_7 7.0 %). All 12 splits complete and hash-verified.
+Decision: ood_2 accepted as is (N + M).
+Reason: the 20 % rule of CLAUDE.md 6.5 is written for the ID sampler; 6.7 says the envelope
+still applies to OOD-2, and lowering its power range would remove the shift the set tests.
