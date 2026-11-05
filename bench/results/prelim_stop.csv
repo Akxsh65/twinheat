@@ -1,0 +1,5 @@
+date,commit,hardware,variant,err_level,seed,peak_K,min_Az_positive,kappa_hat,true_inv_norm,kappa_over_true,iters_to_1e8,iters_cert_1K,iters_cert_0_1K,saved_at_1K_pct,saved_at_0_1K_pct,bound_over_true_err_at_1K,iters_cert_1K_recursive,pcg_certified_iters_1K,pcg_certified_iters_0_1K,iterates_checked,violations
+2026-10-31,cb68062,Windows-10-10.0.26200-SP0,"default, 1 heat-sunk edge",0.02,3,72.7544,True,17472.2,17064.5,1.02389,170,32,65,81.1765,61.7647,23.12,32,32,65,171,0
+2026-10-31,cb68062,Windows-10-10.0.26200-SP0,no heat sink (worst conditioning),0.02,4,72.7652,True,17577.2,17066.7,1.02992,184,30,76,83.6957,58.6957,16.4458,30,30,76,185,0
+2026-10-31,cb68062,Windows-10-10.0.26200-SP0,"4 chips, chip near corner",0.05,5,72.7728,True,17472.2,17064.5,1.02389,174,41,73,76.4368,58.046,23.8947,41,41,73,175,0
+2026-10-31,cb68062,Windows-10-10.0.26200-SP0,"thin copper, weak convection",0.02,6,104.624,True,34328.9,34115.4,1.00626,160,29,61,81.875,61.875,14.5124,29,29,61,161,0

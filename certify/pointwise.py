@@ -10,10 +10,12 @@ asserted"):
   3. w  = w₀ + t z,  t = max(0, max_i(−d_i / (Az)_i))·(1 + 1e-6)
      with z > 0, Az > 0 from certify/kappa.positive_z (SpMV 2 is A z), so Aw = A w₀ + t Az ≥ |r|
   4. assert w ≥ 0 and A w ≥ |r| with a fresh float64 SpMV; raise otherwise.
-UNSURE: this fix-up is our construction from §8.4's wording; bench/prelim/cert.js (not yet in
-the repo) may differ in how it corrects w₀. Validity does not depend on that: step 4 checks the
-Lemma 2(c) hypothesis directly. The 1e-6 factor and the float64 check are PLACEHOLDERS for the
-derived rounding margin (certify/margin.py, N4.1).
+bench/prelim/cert.js does the same with two differences: it does not clip w₀ at 0, and it
+uses one scalar t = max_i(−d_i) / min(Az) instead of the per-cell ratio, which is never smaller
+than ours (so ours is at least as tight). It also takes z from the same number of V-cycles as
+w₀. Validity does not depend on these choices: step 4 checks the Lemma 2(c) hypothesis
+directly. The 1e-6 factor and the float64 check are PLACEHOLDERS for the derived rounding
+margin (certify/margin.py, N4.1).
 """
 
 from __future__ import annotations
@@ -31,18 +33,44 @@ FIXUP_INFLATE = 1e-6  # PLACEHOLDER (see module docstring)
 
 
 def gauss_seidel_smooth(
-    A: sp.spmatrix, b: np.ndarray, x: np.ndarray, sweeps: int, sweep: str = "forward"
+    A: sp.spmatrix, b: np.ndarray, x: np.ndarray, sweeps: int, sweep: str = "forward",
+    colours: np.ndarray | None = None,
 ) -> np.ndarray:
     """x after `sweeps` Gauss–Seidel sweeps on A x = b (a copy; sweeps = 0 returns x unchanged).
 
-    UNSURE: §8.6 reports "GS sweeps" without saying forward or symmetric; forward is the default.
+    sweep: "forward" | "backward" | "symmetric" (lexicographic, pyamg), or "red_black": each
+    sweep updates every colour-0 unknown, then every colour-1 unknown, from the latest values.
+    That is §8.6's smoother (bench/prelim/cert.js, core.js rbSweep with ω = 1, colour (x + y)
+    mod 2 on the plate). red_black needs `colours` (0/1 per unknown) with no coupling between
+    unknowns of the same colour; this is checked.
     """
     if sweeps < 0:
         raise ValueError(f"sweeps must be >= 0, got {sweeps}")
+    A = sp.csr_matrix(A, dtype=np.float64)
+    b = np.asarray(b, dtype=np.float64)
     out = np.array(x, dtype=np.float64)
-    if sweeps:
-        gauss_seidel(sp.csr_matrix(A, dtype=np.float64), out, np.asarray(b, dtype=np.float64),
-                     iterations=sweeps, sweep=sweep)
+    if sweep != "red_black":
+        if colours is not None:
+            raise ValueError(f"colours only applies to sweep='red_black', not {sweep!r}")
+        if sweeps:
+            gauss_seidel(A, out, b, iterations=sweeps, sweep=sweep)
+        return out
+    if colours is None:
+        raise ValueError("sweep='red_black' needs colours (0/1 per unknown)")
+    colours = np.asarray(colours)
+    if colours.shape != (A.shape[0],) or not np.isin(colours, (0, 1)).all():
+        raise ValueError(f"colours must be 0/1 of length {A.shape[0]}")
+    C = A.tocoo()
+    off = C.row != C.col
+    if np.any(colours[C.row[off]] == colours[C.col[off]]):
+        raise ValueError("colours: two coupled unknowns share a colour (not a red-black "
+                         "colouring of A)")
+    d = A.diagonal()
+    R = A - sp.diags(d)
+    masks = (colours == 0, colours == 1)
+    for _ in range(sweeps):
+        for m in masks:
+            out[m] = ((b - R @ out) / d)[m]
     return out
 
 
