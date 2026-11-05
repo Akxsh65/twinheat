@@ -110,7 +110,22 @@ Open. Owner M, due week 6. Goes to `experiments/configs/frozen.yaml`.
 
 ## D5 · Week-3 go/no-go outcome
 
-Open. Owners N + M, due week 3 (exact solve ≥ 0.3 s keeps 256² × 4 layers).
+- **Decision (2026-11-05; proposed by M, N to confirm by approving the PR): keep 256² × 4 layers.** No
+  move to 6 layers or 384².
+- **Evidence:** `bench/results/solver_table_v1.csv` (N1.5, commit c4f7b6f), 20 fixed boards at 256² × 4
+  (262,144 unknowns), measured on the machine that will run the oracle labels (rvcse lab machine: Intel Xeon
+  Gold 6226R, 1 thread, as §7.3 states "one CPU core"; GPU rows on an A100-PCIE-40GB). PyAMG-GMRES to 1e-8:
+  median 4.55 s with default settings, 1.62 s with strength θ = 0.1, all 20 boards converged. Both are far
+  above the 0.3 s threshold (CLAUDE.md §7.3, §15), so an exact solve is expensive enough to justify the
+  surrogate at the planned size.
+- **Caveats:**
+  - The table's `commit` column reads `7ad689a-dirty` (the run started from an uncommitted tree). That is
+    acceptable for this go/no-go, but the numbers are not report numbers until re-run on a tagged commit
+    (CLAUDE.md §0 rule 11).
+  - The Jacobi and red-black rows did not converge within their caps (0/20), so their times are not solve
+    times.
+  - The `gpu_model` field carries trailing NUL bytes; fix this in `bench/solver_bench.py`.
+- **Owners:** N + M.
 
 ## D6 · Week-1 start date
 
