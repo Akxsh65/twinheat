@@ -162,11 +162,14 @@ def energy_balance(
 #   Σ_in-plane faces G_f (θ_P − θ_N) + Σ_{m=l±1} g_lm Δx² (θ_P − θ_m) + h_l Δx² θ_P = q_l Δx²
 # G_l = k_Cu t_Cu,l φ_l + k_FR4,xy ½ (d_{l−1,l} + d_{l,l+1}) with the missing outer dielectric = 0
 # (D3, spec.conventions.outer_dielectric_term), g_lm = (k_FR4,z + ν k_Cu A_v) / d_lm, h_1 = h_top,
-# h_4 = h_bot, h_2 = h_3 = 0, q on L1 only. Heat-sunk edges hold every layer at θ = 0.
+# h_4 = h_bot, h_2 = h_3 = 0, q on L1 (and q_bot on L4 for ood_bottom_chips only). Heat-sunk
+# edges hold every layer at θ = 0.
 #
 # `raster` is any object with these attributes (SI, arrays [.., y, x]); data/raster.py (M1.1)
 # must provide them: phi [4,N,N] (1) · q [N,N] W/m² on L1 · nu [3,N,N] vias/m² for the gaps
 # L1–L2, L2–L3, L3–L4 · h_top, h_bot [N,N] W/(m²·K) · t_cu [4] m per layer · k_fr4_xy W/(m·K).
+# Optional: q_bot [N,N] W/m² on L4 (bottom-side chips, docs/decisions.md "OOD sets v2", point 2).
+# A raster without q_bot has no bottom-side heat; data/raster.Raster always provides it.
 
 N_LAYERS = 4
 _RASTER_FIELDS = ("phi", "q", "nu", "h_top", "h_bot", "t_cu", "k_fr4_xy")
@@ -178,8 +181,10 @@ def _check_raster(raster: object) -> tuple[int, dict[str, np.ndarray]]:
     if phi.ndim != 3 or phi.shape[0] != N_LAYERS or phi.shape[1] != phi.shape[2]:
         raise ValueError(f"raster.phi must be [4, N, N], got {phi.shape}")
     n = phi.shape[1]
-    want = {"q": (n, n), "nu": (3, n, n), "h_top": (n, n), "h_bot": (n, n), "t_cu": (4,),
-            "k_fr4_xy": ()}
+    q_bot = getattr(raster, "q_bot", None)
+    f["q_bot"] = np.zeros((n, n)) if q_bot is None else np.asarray(q_bot, dtype=np.float64)
+    want = {"q": (n, n), "q_bot": (n, n), "nu": (3, n, n), "h_top": (n, n), "h_bot": (n, n),
+            "t_cu": (4,), "k_fr4_xy": ()}
     for name, shape in want.items():
         if f[name].shape != shape:
             raise ValueError(f"raster.{name} must have shape {shape}, got {f[name].shape}")
@@ -188,7 +193,7 @@ def _check_raster(raster: object) -> tuple[int, dict[str, np.ndarray]]:
             raise ValueError(f"raster.{name} must be finite")
     if phi.min() < 0 or phi.max() > 1:
         raise ValueError(f"raster.phi must lie in [0, 1], got [{phi.min()}, {phi.max()}]")
-    for name in ("nu", "h_top", "h_bot"):
+    for name in ("q_bot", "nu", "h_top", "h_bot"):
         if f[name].min() < 0:
             raise ValueError(f"raster.{name} must be >= 0, min is {f[name].min()}")
     if f["t_cu"].min() <= 0 or f["k_fr4_xy"] <= 0:
@@ -259,6 +264,7 @@ def coefficients(spec, raster: object, dirichlet_edges: Collection[str]) -> dict
     h[-1] = f["h_bot"] * dx * dx
     diag = Ge + Gw + Gn + Gs + gup + gdn + h + 2 * G * _edge_mask(n, edges)[None]
     rhs[0] = f["q"] * dx * dx
+    rhs[-1] = f["q_bot"] * dx * dx  # bottom-side chips (zero unless ood_bottom_chips)
     return {"Ge": Ge, "Gw": Gw, "Gn": Gn, "Gs": Gs, "gup": gup, "gdn": gdn, "diag": diag,
             "rhs": rhs}
 
@@ -296,7 +302,8 @@ def board_energy_balance(
 ) -> float:
     """Relative energy-balance error |P_in − P_out| / P_in for a 4-layer θ [4, N, N] (K).
 
-    P_in = Σ q Δx²; P_out = Σ h_top Δx² θ_L1 + Σ h_bot Δx² θ_L4 + Σ_layers Σ_Dirichlet 2 G_l θ.
+    P_in = Σ (q + q_bot) Δx²; P_out = Σ h_top Δx² θ_L1 + Σ h_bot Δx² θ_L4
+    + Σ_layers Σ_Dirichlet 2 G_l θ.
     """
     n, f = _check_raster(raster)
     edges = _check_edges(dirichlet_edges)
@@ -304,7 +311,7 @@ def board_energy_balance(
     if theta.shape != (N_LAYERS, n, n):
         raise ValueError(f"theta must have shape {(N_LAYERS, n, n)}, got {theta.shape}")
     dx = spec.geometry.L.value / n
-    p_in = float((f["q"] * dx * dx).sum())
+    p_in = float(((f["q"] + f["q_bot"]) * dx * dx).sum())
     if p_in <= 0:
         raise ValueError(f"energy balance needs a positive total heat input, got {p_in} W")
     G = layer_conductances(spec, raster)

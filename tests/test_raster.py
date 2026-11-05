@@ -351,8 +351,6 @@ def test_ood_boards_commute_with_symmetries(sym: int) -> None:
                 assert np.array_equal(getattr(a, f), getattr(b, f)), f"{rec['id']} {sym} {f}"
 
 
-@pytest.mark.xfail(strict=True, reason="needs N: solvers/fvm.py does not read Raster.q_bot yet "
-                   "(docs/decisions.md OOD sets v2, point 2). Remove this mark when it does.")
 def test_solver_counts_bottom_chip_heat() -> None:
     rec = _board()
     for c in rec["chips"]:
