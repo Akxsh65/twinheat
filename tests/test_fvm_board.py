@@ -363,3 +363,53 @@ def test_condition_number_by_lanczos(seed):
                     "scipy eigsh LA + shift-invert sigma=0, tol 1e-8", platform.platform()])
     print(f"\n{rec['id']} edges {edges}: lambda_min {lam_min:.3e}, lambda_max {lam_max:.3e}, "
           f"kappa2 {kappa:.3e}")
+
+
+# ---------------------------------------------------------------- bottom-side heat (q_bot, L4)
+
+
+def test_q_bot_goes_to_the_l4_rows_only() -> None:
+    n = 8
+    r = uniform_raster(n, q=0.0)
+    q_bot = np.zeros((n, n))
+    q_bot[3, 5] = 2e3  # W/m²
+    _, b0 = assemble_board(SPEC, r, ["W"])  # the stand-in has no q_bot: no bottom-side heat
+    assert not b0.any()
+
+    class WithBottom:  # any object with the raster fields plus q_bot
+        pass
+
+    w = WithBottom()
+    w.__dict__.update(r.__dict__, q_bot=q_bot)
+    _, b = assemble_board(SPEC, w, ["W"])
+    dx = SPEC.geometry.L.value / n
+    k = 3 * n * n + 3 * n + 5  # layer index 3 = L4, cell (y=3, x=5)
+    assert b[k] == pytest.approx(2e3 * dx * dx, rel=1e-15)
+    assert np.count_nonzero(b) == 1
+
+
+def test_bottom_chip_boards_conserve_energy() -> None:
+    from data.raster import rasterise
+
+    n = 64
+    for seed in range(5):
+        rec = sample_board(seed, "ood_bottom_chips")
+        r = rasterise(rec, SPEC, n)
+        assert r.q_bot.any() and not r.q.any()
+        A, b = assemble_board(SPEC, r, rec["dirichlet_edges"])
+        theta = solve_direct(A, b).reshape(4, n, n)
+        assert board_energy_balance(SPEC, r, rec["dirichlet_edges"], theta) <= ENERGY_TOL
+        assert theta[3].max() > theta[0].max()  # the heat now enters on the bottom layer
+
+
+def test_negative_q_bot_raises() -> None:
+    n = 4
+    r = uniform_raster(n)
+
+    class Bad:
+        pass
+
+    w = Bad()
+    w.__dict__.update(r.__dict__, q_bot=-np.ones((n, n)))
+    with pytest.raises(ValueError, match="q_bot"):
+        assemble_board(SPEC, w, ["W"])
