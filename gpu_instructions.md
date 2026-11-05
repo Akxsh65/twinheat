@@ -10,9 +10,9 @@ the N1.5 go/no-go is measured there (section A); Kaggle (sections 1–2) validat
 | 1 | N1.4 GPU tests + stencil bandwidth | Kaggle T4 | `n/n1.4-gpu-kernels` | gate G1, end of week 3 (Sat 7 Nov 2026); aim for Thu 5 Nov | [ ] |
 | 2 | N1.5 GPU rows on a T4 (optional once A is done) | Kaggle T4 | `n/n1.4-gpu-kernels` | after section 1 passes | [ ] |
 | A | N1.5 CPU **and** GPU rows on the oracle machine | lab GPU machine | `n/n1.4-gpu-kernels` | gate G1 (Sat 7 Nov 2026); decides D5 | [ ] |
+| 3 | N2.1 200-board pilot (after section 1 passes) | Kaggle T4 or lab GPU | `n/n2.1-generate` | week 4 (data generation starts) | [ ] |
 
-New GPU prompts (N1.5 timing, N2.1, N4.x, M1.3, M2.x, ...) get a section here when their code is
-written.
+New GPU prompts (N4.x, M1.3, M2.x, ...) get a section here when their code is written.
 
 ---
 
@@ -138,3 +138,41 @@ python -m bench.solver_bench --figure --out bench/results/solver_table_v1.csv
 **Send back:** `bench/results/solver_table_v1.csv`, `bench/figs/solver_table_v1.png`,
 `n15_cpu_log.txt`, `n15_gpu_log.txt`, the output of `check_gpu.py`, and the machine's name (it
 becomes the oracle machine of record).
+
+---
+
+## 3 · N2.1 · 200-board generation pilot
+
+Run after section 1 has passed (the generator uses the N1.4 kernels). Session setup as section 0,
+with `BRANCH = "n/n2.1-generate"`. Expected time: unknown until measured; that is part of what this
+run reports (boards/s on the GPU).
+
+```
+!python -m data.generate --split train --count 200 --seed 0 --out pilot_train --device gpu 2>&1 | tee n21_pilot_log.txt
+!python -c "from data.generate import verify; print(verify('pilot_train')['complete'])"
+```
+
+`--device gpu` makes it fail loudly if CuPy or the GPU is missing, instead of falling back to the
+CPU. The pilot uses seed 0 only to check the pipeline; the seeds of the released splits are N and
+M's decision and go into `docs/decisions.md` before the real run.
+
+Then a summary for the distribution review (M and N together), in a new Python cell:
+
+```python
+import json, numpy as np, pathlib
+rows = [json.loads(l) for f in sorted(pathlib.Path("pilot_train").glob("shard_*/records.jsonl"))
+        for l in f.read_text().splitlines()]
+F = np.concatenate([np.load(f, mmap_mode="r") for f in sorted(pathlib.Path("pilot_train").glob("shard_*/fields.npy"))])
+peak = F.reshape(len(F), -1).max(1).astype(float)
+for mode in ("design", "id"):
+    sel = [i for i, r in enumerate(rows) if r["record"]["mode"] == mode]
+    p = peak[sel]; it = np.array([rows[i]["iters"] for i in sel])
+    print(mode, len(sel), "peak K P5/P50/P95", np.percentile(p, [5, 50, 95]).round(1),
+          "iters P50/P95", np.percentile(it, [50, 95]).round(0),
+          "rescaled", sum(rows[i]["scaled"] for i in sel))
+print("max energy balance error", max(r["energy_balance"] for r in rows))
+```
+
+**Send back:** `n21_pilot_log.txt` (has boards/s and ETA lines), `pilot_train/manifest.json`, the
+summary output, and the GPU model (`check_gpu.py`). Keep `pilot_train/` (about 0.5 MB per board)
+for the review; do not upload it as a released split.
