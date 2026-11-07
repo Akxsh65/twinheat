@@ -2,6 +2,8 @@
 
     python -m server.solver_stream --out server/demo/solver.jsonl [--n 256] [--seeds 0 1 2]
     python -m server.ws_mock_server server/demo/solver.jsonl --rate 0.2 --loop
+    add --records-out viewer/public/demo/records.json and open the viewer with
+    ?records=/demo/records.json to see the via columns (G2.1)
 
 Each board is sampler board `seed` (mode "id"), rasterised at n x n, assembled by
 solvers/fvm.assemble_board and solved by SciPy's direct solver (about 100 s per board at 256²
@@ -73,13 +75,23 @@ def messages(seeds: Sequence[int] = (0, 1, 2), n: int = N_FULL, orientation: boo
                         "y = 0 on L1 must show bottom-right")
 
 
+def records(seeds: Sequence[int] = (0, 1, 2)) -> dict[str, dict]:
+    """{message id: board record} for the solver messages: the viewer draws via columns from it."""
+    return {f"solver-id-{seed}": sample_board(seed, "id") for seed in seeds}
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--n", type=int, default=N_FULL)
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--no-orientation", action="store_true")
+    ap.add_argument("--records-out", type=Path, default=None,
+                    help="also write {id: record} JSON for the viewer's ?records= option")
     args = ap.parse_args(argv)
+    if args.records_out is not None:
+        args.records_out.parent.mkdir(parents=True, exist_ok=True)
+        args.records_out.write_text(json.dumps(records(args.seeds)) + "\n", encoding="utf-8")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8", newline="\n") as f:
         for line in messages(args.seeds, args.n, not args.no_orientation):

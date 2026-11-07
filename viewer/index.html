@@ -55,9 +55,32 @@
     <pre id="dev-overlay"></pre>
     <div id="controls">
       <div>
-        <label for="gap">layer gap</label>
-        <input id="gap" type="range" min="0" step="0.005" />
-        <span id="gap-value"></span>
+        <label for="peel">layer peel</label>
+        <input id="peel" type="range" min="0" max="1" step="0.01" />
+        <span id="peel-value"></span>
+      </div>
+      <div>
+        <label><input id="cut-on" type="checkbox" /> cut plane</label>
+        <select id="cut-axis">
+          <option value="x" selected>east–west</option>
+          <option value="y">north–south</option>
+        </select>
+        <input id="cut-pos" type="range" min="0" max="1" step="0.005" value="0.5" />
+      </div>
+      <div>
+        <label for="look">look</label>
+        <select id="look">
+          <option value="thermal" selected>thermal</option>
+          <option value="realistic">realistic PCB</option>
+        </select>
+        <label><input id="sdf" type="checkbox" /> SDF</label>
+      </div>
+      <div>
+        <label for="oit">FR-4</label>
+        <select id="oit">
+          <option value="wboit" selected>WBOIT</option>
+          <option value="sorted">sorted</option>
+        </select>
       </div>
       <div>
         <label for="lut">colour map</label>

@@ -156,20 +156,21 @@ export function decodeField(msg, kind) {
 export function processMessage(raw) {
   try {
     const { kind, msg } = parseMessage(raw);
-    return { ok: true, kind, field: RENDERED_FIELD[kind] ? decodeField(msg, kind) : null };
+    return { ok: true, kind, id: msg.id ?? null, field: RENDERED_FIELD[kind] ? decodeField(msg, kind) : null };
   } catch (e) {
     return { ok: false, error: e.message };
   }
 }
 
 /**
- * Return handle(raw) -> {ok, kind, updated} | {ok: false, error}, which runs processMessage
+ * Return handle(raw) -> {ok, kind, id, updated} | {ok: false, error}, which runs processMessage
  * inline. handle.apply(result) takes a processMessage result (e.g. from the worker) and does the
  * cheap half: count it and, if it is valid and rendered, update the textures. handle.status holds
- * what the dev overlay shows: lastType (last valid message), lastError, received, rejected.
+ * what the dev overlay shows: lastType (last valid message), lastId (id of the field on screen),
+ * lastError, received, rejected.
  */
 export function createHandler({ textures, log = console.warn }) {
-  const status = { lastType: null, lastError: null, received: 0, rejected: 0, worker: null };
+  const status = { lastType: null, lastId: null, lastError: null, received: 0, rejected: 0, worker: null };
   function reject(error) {
     status.rejected += 1;
     status.lastError = error;
@@ -189,7 +190,8 @@ export function createHandler({ textures, log = console.warn }) {
       }
     }
     status.lastType = result.kind;
-    return { ok: true, kind: result.kind, updated };
+    if (result.field) status.lastId = result.id ?? null; // id of the field now shown
+    return { ok: true, kind: result.kind, id: result.id ?? null, updated };
   }
   const handle = (raw) => apply(processMessage(raw));
   handle.apply = apply;

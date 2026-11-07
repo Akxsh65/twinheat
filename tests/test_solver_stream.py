@@ -50,3 +50,12 @@ def test_orientation_field_is_hot_at_the_south_east_corner_of_l1(lines):
     assert hot[:, 1].max() < N // 2 and hot[:, 2].min() >= N // 2  # south half, east half
     assert f[0, 0, N - 1] == f.max()  # the corner cell itself
     assert "SYNTHETIC" in msg["stop_reason"]
+
+
+def test_records_file_maps_message_ids_to_the_solved_boards(lines):
+    recs = ss.records((0, 1, 2))
+    ids = [json.loads(s)["id"] for s in lines if json.loads(s)["id"].startswith("solver-")]
+    assert sorted(recs) == sorted(ids)
+    for seed in (0, 1, 2):
+        validate(recs[f"solver-id-{seed}"], "board_record")
+        assert recs[f"solver-id-{seed}"] == sample_board(seed, "id")

@@ -13,8 +13,22 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { VRButton } from "three/addons/webxr/VRButton.js";
 
 import fieldVert from "../shaders/field.vert?raw";
+import jfaDistFrag from "../shaders/jfa_dist.frag?raw";
+import jfaNormalFrag from "../shaders/jfa_normal.frag?raw";
+import jfaSeedFrag from "../shaders/jfa_seed.frag?raw";
+import jfaStepFrag from "../shaders/jfa_step.frag?raw";
+import oitAccumFrag from "../shaders/oit_accum.frag?raw";
+import oitCompositeFrag from "../shaders/oit_composite.frag?raw";
+import sectionFrag from "../shaders/section.frag?raw";
+import sectionVert from "../shaders/section.vert?raw";
 import thermalFrag from "../shaders/thermal.frag?raw";
+import { createBoardLook } from "./boardMaterial.js";
+import { attachCutDrag, createCutPlane } from "./cutPlane.js";
+import { createJFA } from "./jfa.js";
+import { createPeel, gapForSeparation, peelStep, setPeelTarget, xrPeelInput } from "./layerPeel.js";
 import { BOARD_WIDTH_M, GAP_DEFAULT_M, GAP_MAX_M, boardCentre, desktopCamera, layerGeometry, layerOffset } from "./layout.js";
+import { createWBOIT } from "./oit.js";
+import { createViaMesh } from "./vias.js";
 import { DEFAULT_LUT, createLutTexture, setLut as switchLut } from "./lut.js";
 import { N_LAYERS } from "./net.js";
 import { AMBIENT_C, niceStep } from "./probe.js";
@@ -25,6 +39,9 @@ export { BOARD_WIDTH_M, GAP_DEFAULT_M, GAP_MAX_M };
 const ISO_WIDTH_PX = 1.5;
 const ISO_COLOUR = new THREE.Color(1, 1, 1);
 const ISO_ALPHA = 0.55;
+const FR4_COLOUR = new THREE.Color(0xc8b45a); // FR-4 slabs between the layers
+const FR4_ALPHA = 0.22;
+const SLAB_FILL = 0.96; // slabs a little thinner than the gap: no face coplanar with a layer plane
 const BAR_LENGTH_M = 0.35;
 const BAR_WIDTH_M = 0.03;
 const BAR_MARGIN_M = 0.08; // gap between the board's east edge and the bar
@@ -94,7 +111,7 @@ function createBarLabels() {
  * Build renderer, scene and camera inside `container`. Returns {renderer, camera, planes,
  * setGap(m), setLut(name), setIsoStep("auto" | K | 0), update(layerTextures), start(onFrame)}.
  */
-export function createScene(container, { seated = false } = {}) {
+export function createScene(container, { seated = false, hdriUrl = null } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(container.clientWidth, container.clientHeight);
@@ -143,13 +160,84 @@ export function createScene(container, { seated = false } = {}) {
     (BAR_LENGTH_M + CAPTION_M) / 2, 0);
   board.add(labelMesh);
 
+  // FR-4 dielectric slabs between neighbouring layers, translucent (src/oit.js)
+  const slabGeometry = new THREE.BoxGeometry(BOARD_WIDTH_M, 1, BOARD_WIDTH_M);
+  const slabs = Array.from({ length: N_LAYERS - 1 }, (_, k) => {
+    const mesh = new THREE.Mesh(slabGeometry, new THREE.MeshBasicMaterial({
+      color: FR4_COLOUR, transparent: true, opacity: FR4_ALPHA, depthWrite: false }));
+    mesh.name = `FR-4 L${k + 1}-L${k + 2}`;
+    mesh.userData.oit = { color: FR4_COLOUR, alpha: FR4_ALPHA };
+    board.add(mesh);
+    return mesh;
+  });
+  const vias = createViaMesh();
+  board.add(vias.mesh);
+  let viaColumns = [];
+  const cut = createCutPlane(BOARD_WIDTH_M, lut, { vert: sectionVert, frag: sectionFrag });
+  board.add(cut.mesh);
+  attachCutDrag({ cut, camera, dom: renderer.domElement, controls, boardCentre: centre, boardWidth: BOARD_WIDTH_M });
+
+  // realistic top layer (src/boardMaterial.js); its JFA bake runs once per record, lazily
+  const jfa = createJFA(renderer, { seed: jfaSeedFrag, step: jfaStepFrag, dist: jfaDistFrag, normal: jfaNormalFrag });
+  const look = createBoardLook({ renderer, scene, jfa, boardWidth: BOARD_WIDTH_M, layerGeometry: geometry, hdriUrl });
+  board.add(look.group);
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8); // a key light for the physical materials
+  sun.position.set(0.6, 2.5, 0.8);
+  scene.add(sun);
+  let lookMode = "thermal";
+  let record = null;
+  let bakedRecord = null;
+  function bakeIfNeeded() {
+    if (lookMode !== "realistic" || record === null || record === bakedRecord) return;
+    const b = look.setRecord(record);
+    bakedRecord = record;
+    console.info(`JFA bake: ${b.passes} passes in ${b.ms.toFixed(1)} ms (${record.id})`);
+  }
+
+  let gapNow = GAP_DEFAULT_M;
+  const layerY = (l) => layerOffset(l, N_LAYERS, gapNow);
   function setGap(gap) {
     if (!(gap >= 0 && gap <= GAP_MAX_M)) throw new RangeError(`layer gap must be in [0, ${GAP_MAX_M}] m, got ${gap}`);
+    gapNow = gap;
     planes.forEach((mesh, l) => {
-      mesh.position.y = layerOffset(l, N_LAYERS, gap);
+      mesh.position.y = layerY(l);
     });
+    const open = gap > 1e-4; // collapsed stack: no slab, column or section to show
+    slabs.forEach((mesh, k) => {
+      mesh.position.y = (layerY(k) + layerY(k + 1)) / 2;
+      mesh.scale.y = Math.max(SLAB_FILL * gap, 1e-6);
+      mesh.visible = open;
+    });
+    vias.update(open ? viaColumns : [], layerY, BOARD_WIDTH_M);
+    cut.setGap(gap);
+    look.setHeight(layerY(0));
   }
   setGap(GAP_DEFAULT_M);
+
+  let peel = createPeel(GAP_DEFAULT_M / GAP_MAX_M);
+  const xrPeel = xrPeelInput(renderer, scene);
+  /** Desktop slider: separation s in [0, 1] (the stack follows it smoothly). */
+  function setSeparation(s) {
+    peel = setPeelTarget(peel, s);
+  }
+  /** "thermal" (the L1 field) or "realistic" (copper, solder mask, silkscreen, packages on L1). */
+  function setLook(mode) {
+    if (mode !== "thermal" && mode !== "realistic") throw new RangeError(`look must be thermal or realistic, got ${mode}`);
+    lookMode = mode;
+    planes[0].visible = mode === "thermal";
+    look.setVisible(mode === "realistic");
+    bakeIfNeeded();
+  }
+  /** The board record on screen (vias, packages, copper mask); a new record re-bakes the JFA. */
+  function setRecord(rec) {
+    record = rec;
+    bakeIfNeeded();
+  }
+  /** Via columns from src/vias.js viaColumns (the current record and field); [] hides them. */
+  function setViaColumns(cols) {
+    viaColumns = cols;
+    vias.update(gapNow > 1e-4 ? cols : [], layerY, BOARD_WIDTH_M);
+  }
 
   function setLut(name) {
     switchLut(lut, name); // one shared texture: planes and bar switch together
@@ -178,12 +266,17 @@ export function createScene(container, { seated = false } = {}) {
       mesh.material.uniforms.uField.value = layerTextures.textures[l]; // rebinds after a resize
     });
     labels.draw(layerTextures.min, layerTextures.max, step, lutName);
+    cut.update(layerTextures);
   }
 
+  const wboit = createWBOIT(renderer, { accum: oitAccumFrag, composite: oitCompositeFrag });
+  let useOit = true;
   window.addEventListener("resize", () => {
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(container.clientWidth, container.clientHeight);
+    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    wboit.setSize(size.x, size.y);
   });
 
   /**
@@ -192,13 +285,33 @@ export function createScene(container, { seated = false } = {}) {
    */
   function start(onFrame) {
     let cpuMs = 0;
+    let last = null;
     renderer.setAnimationLoop((time) => {
       const t0 = performance.now();
+      const dt = last === null ? 0 : (time - last) / 1000;
+      last = time;
+      peel = peelStep(peel, xrPeel.input(), dt);
+      const gap = gapForSeparation(peel.s);
+      if (Math.abs(gap - gapNow) > 1e-7) setGap(gap);
       onFrame(time, cpuMs);
-      renderer.render(scene, camera);
+      // desktop: weighted blended OIT; XR: three's sorted blending (exact for parallel slabs)
+      if (useOit && !renderer.xr.isPresenting) wboit.render(scene, camera, slabs);
+      else renderer.render(scene, camera);
       cpuMs = performance.now() - t0;
     });
   }
 
-  return { renderer, camera, planes, setGap, setLut, setIsoStep, update, start };
+  return {
+    renderer, camera, planes, cut, look, setGap, setSeparation, setViaColumns, setRecord, setLook, setLut,
+    setIsoStep, update, start,
+    showSdf(on) {
+      look.showSdf(on);
+    },
+    setOit(on) {
+      useOit = Boolean(on);
+    },
+    get separation() {
+      return peel.s;
+    },
+  };
 }
