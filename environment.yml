@@ -28,6 +28,7 @@ dependencies:
   - pandas=3.1.0
   - pyarrow=25.0.0
   - matplotlib-base=3.11.2
+  - scikit-learn=1.9.1      # M2.3 OOD score (Ledoit-Wolf)
   # dev
   - pytest=9.1.1
   - ruff=0.17.2
