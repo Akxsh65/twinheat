@@ -32,6 +32,7 @@ cupy-cuda12x==14.0.1  # [kaggle]
 fastapi==0.161.1
 uvicorn==0.54.0
 websockets==17.3
+httpx==0.28.1       # fastapi.testclient (tests/test_server_v0.py)
 pydantic==2.14.1    # >= 2 as required by CLAUDE.md §4
 jsonschema==4.26.0
 pyyaml==6.0.3
