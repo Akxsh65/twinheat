@@ -1,0 +1,11 @@
+{
+  "source": "config/spec_v2.yaml via server/viewer_constants.py; do not edit by hand",
+  "L_m": 0.1,
+  "k_cu_W_per_mK": 390.0,
+  "via_area_m2": 2.1598449493429825e-08,
+  "gap_thickness_m": [
+    0.0002,
+    0.00106,
+    0.0002
+  ]
+}
