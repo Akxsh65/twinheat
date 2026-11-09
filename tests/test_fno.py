@@ -12,6 +12,7 @@ import torch
 import models.train as train_mod
 from models.data_guard import SplitAccessError, is_protected, open_split
 from models.fno import FNO2d, SpectralConv2d
+from models.fno_local import FNOLocal2d
 from models.train import TrainConfig, relative_l2, train
 
 
@@ -21,11 +22,12 @@ def _grid(n: int) -> tuple[torch.Tensor, torch.Tensor]:
 
 
 def _identity(conv: SpectralConv2d) -> None:
+    """Weight 1 + 0i on the channel diagonal (weights are stored as [..., (re, im)])."""
     with torch.no_grad():
         for w in (conv.w_pos, conv.w_neg):
             w.zero_()
             for i in range(conv.in_ch):
-                w[i, i] = 1.0
+                w[i, i, ..., 0] = 1.0
 
 
 # ------------------------------------------------------------------ spectral convolution
@@ -63,6 +65,43 @@ def test_negative_y_block_is_used() -> None:
 def test_modes_larger_than_the_grid_raise() -> None:
     with pytest.raises(ValueError, match="modes"):
         SpectralConv2d(1, 1, modes=24)(torch.zeros(1, 1, 32, 32))
+
+
+@pytest.mark.parametrize("cls", [FNO2d, FNOLocal2d])
+def test_all_parameters_are_real(cls) -> None:
+    """GradScaler.unscale_ has no complex kernel (CPU or CUDA): a complex parameter crashes AMP."""
+    model = cls(3, 1, width=8, modes=4, n_layers=2)
+    assert not [n for n, p in model.named_parameters() if p.is_complex()]
+
+
+@pytest.mark.parametrize("cls", [FNO2d, FNOLocal2d])
+def test_one_amp_grad_scaler_step_runs(cls) -> None:
+    """The step train.py and train_ensemble.py take on CUDA, with the CPU scaler (same kernel)."""
+    torch.manual_seed(0)
+    model = cls(3, 1, width=8, modes=4, n_layers=2)
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    scaler = torch.amp.GradScaler("cpu", enabled=True)
+    before = [p.detach().clone() for p in model.parameters()]
+    loss = model(torch.randn(2, 3, 16, 16)).square().mean()
+    scaler.scale(loss).backward()
+    scaler.unscale_(opt)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    scaler.step(opt)
+    scaler.update()
+    assert all(not torch.equal(a, p) for a, p in zip(before, model.parameters(), strict=True))
+
+
+def test_initial_weights_equal_the_former_complex_draw() -> None:
+    """Same seed, same numbers as the earlier cfloat parameters: seeded members are unchanged."""
+    shape = (3, 2, 4, 4)
+    torch.manual_seed(5)
+    conv = SpectralConv2d(3, 2, modes=4)
+    torch.manual_seed(5)
+    scale = 1.0 / (3 * 2)
+    w_pos = scale * torch.rand(shape, dtype=torch.cfloat)
+    w_neg = scale * torch.rand(shape, dtype=torch.cfloat)
+    torch.testing.assert_close(torch.view_as_complex(conv.w_pos.detach()), w_pos, rtol=0, atol=0)
+    torch.testing.assert_close(torch.view_as_complex(conv.w_neg.detach()), w_neg, rtol=0, atol=0)
 
 
 # ------------------------------------------------------------------ FNO2d
