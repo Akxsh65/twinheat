@@ -7,7 +7,10 @@ layer has no GELU. A 1x1 lifting maps in_ch -> width; a two-layer projection map
 SpectralConv2d keeps `modes` frequencies per axis: along x (rfft2's half spectrum) the lowest
 `modes`, and along y BOTH the lowest positive and the lowest negative `modes` (rows 0..m-1 and
 -m..-1), each block with its own complex weights. The FFT runs in float32 with autocast off, so
-AMP never sees half-precision complex numbers.
+AMP never sees half-precision complex numbers. The complex weights are stored as real parameters
+[in, out, m, m, 2] = (re, im) and viewed as complex in forward: GradScaler.unscale_ has no kernel
+for complex parameters (CPU or CUDA), so a cfloat parameter crashes the first AMP step. AdamW and
+gradient clipping treat a complex number as its (re, im) pair, so training is unchanged.
 """
 
 from __future__ import annotations
@@ -28,9 +31,9 @@ class SpectralConv2d(nn.Module):
             raise ValueError(f"in_ch, out_ch, modes must be >= 1, got {in_ch}, {out_ch}, {modes}")
         self.in_ch, self.out_ch, self.modes = in_ch, out_ch, modes
         scale = 1.0 / (in_ch * out_ch)
-        shape = (in_ch, out_ch, modes, modes)
-        self.w_pos = nn.Parameter(scale * torch.rand(shape, dtype=torch.cfloat))  # y >= 0
-        self.w_neg = nn.Parameter(scale * torch.rand(shape, dtype=torch.cfloat))  # y < 0
+        shape = (in_ch, out_ch, modes, modes, 2)  # (re, im); same draw as the former cfloat
+        self.w_pos = nn.Parameter(scale * torch.rand(shape))  # y >= 0
+        self.w_neg = nn.Parameter(scale * torch.rand(shape))  # y < 0
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         b, c, h, w = x.shape
@@ -42,8 +45,9 @@ class SpectralConv2d(nn.Module):
         with torch.autocast(device_type=x.device.type, enabled=False):
             xf = torch.fft.rfft2(x.float(), norm="ortho")  # [B, C, H, W//2 + 1]
             out = torch.zeros(b, self.out_ch, h, w // 2 + 1, dtype=torch.cfloat, device=x.device)
-            out[:, :, :m, :m] = torch.einsum("bixy,ioxy->boxy", xf[:, :, :m, :m], self.w_pos)
-            out[:, :, -m:, :m] = torch.einsum("bixy,ioxy->boxy", xf[:, :, -m:, :m], self.w_neg)
+            w_pos, w_neg = torch.view_as_complex(self.w_pos), torch.view_as_complex(self.w_neg)
+            out[:, :, :m, :m] = torch.einsum("bixy,ioxy->boxy", xf[:, :, :m, :m], w_pos)
+            out[:, :, -m:, :m] = torch.einsum("bixy,ioxy->boxy", xf[:, :, -m:, :m], w_neg)
             return torch.fft.irfft2(out, s=(h, w), norm="ortho")
 
 
