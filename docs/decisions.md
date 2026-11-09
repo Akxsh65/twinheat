@@ -175,3 +175,22 @@ splits <= 7.0 % (ID splits 0.4-1.2 %, ood_7 7.0 %). All 12 splits complete and h
 Decision: ood_2 accepted as is (N + M).
 Reason: the 20 % rule of CLAUDE.md 6.5 is written for the ID sampler; 6.7 says the envelope
 still applies to OOD-2, and lowering its power range would remove the shift the set tests.
+
+## M1.3 Darcy validation result, 2026-11-09
+Run darcy_validate-2d5a346-0 (rvcse A100, seed 0, 100 epochs, batch 32, lr 1e-3, wd 1e-4):
+test rel. L2 0.0213 (val 0.0201, best epoch 96/100). Published PDEBench FNO nRMSE 0.064
+(docs/refs/pdebench_darcy_fno.txt): ratio 0.33, outside the prompt's two-sided 20 % band, on the
+better side. Not a like-for-like reproduction: PDEBench trained the original FNO implementation and
+hyperparameters, 500 epochs, Adam, lr 1e-3 halved every 100 epochs, 90/10 split (arXiv 2210.07182v7,
+Sec. 4.1 and App. C); ours is FNO2d width 48, modes 24 (CLAUDE.md 12), AdamW + cosine, x/y channels,
+train-only normalisation, split 8500/500/1000 (last 1000 = test, disjoint by test).
+Decision: M1.3 accepted. The FNO and trainer learn Darcy below the published FNO error; for this
+check "within 20 %" is read as "test rel. L2 <= the published value". Owner: M.
+
+## Ensemble training settings (M2.2), 2026-11-09
+Members 1-5: seed = member number. Effective batch 32 (--batch 32; gradient accumulation where a
+GPU cannot fit 32). pre128: 100 epochs. ft256: 50 epochs from that member's pre128 best.pt.
+Early stopping patience 10 on validation hotspot error (K), as coded. lr 1e-3 / 3e-4, weight decay
+1e-4, w_hot 0.1, AMP: models/train_ensemble.py defaults. Basis: rvcse A100 timing run (eb1b3ac),
+about 14 s/epoch at 128^2 and 2.6 min/epoch at 256^2. Revisit ft256 epochs after member 1 if its
+validation curve has not flattened. All members train on rvcse GPU 0. Owner: M.
