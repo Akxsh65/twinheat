@@ -1,0 +1,28 @@
+{
+  "run_id": "darcy_validate-2d5a346-0",
+  "commit": "2d5a346",
+  "dataset_sha256": "bef7c3659e67fe04907db34890148eb21be093bd282079819cc053d0c8cf5ac9",
+  "seed": 0,
+  "hardware": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35 NVIDIA A100-PCIE-40GB",
+  "date": "2026-11-09",
+  "splits": {
+    "train": 8500,
+    "val": 500,
+    "test": 1000
+  },
+  "hyperparameters": {
+    "epochs": 100,
+    "batch": 32,
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "width": 48,
+    "modes": 24,
+    "n_layers": 4
+  },
+  "best_epoch": 96,
+  "best_val_rel_l2": 0.020087501034140587,
+  "test_rel_l2": 0.021265488117933273,
+  "published_rel_l2": 0.064,
+  "ratio_to_published": 0.3322732518427074,
+  "within_tolerance": false
+}
