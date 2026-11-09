@@ -1,0 +1,8 @@
+source: Takamoto et al., "PDEBench: An Extensive Benchmark for Scientific Machine Learning", NeurIPS 2022 Datasets and Benchmarks, arXiv 2210.07182v7
+location: Appendix E, Table 8 (Darcy flow), printed page 15 = PDF page 31; row DarcyFlow, beta = 1.0, metric nRMSE, column FNO
+printed value: 6.4 x 10^-2 (U-Net in the same row: 3.3 x 10^-2)
+metric definition: Appendix B, eq. (4): nRMSE = ||u_pred - u_true||_2 / ||u_true||_2 (per sample), i.e. relative L2
+data: 2D_DarcyFlow_beta1.0_Train.hdf5, PDEBench data_download/pdebench_data_urls.csv: https://darus.uni-stuttgart.de/api/access/datafile/133219, MD5 81694ed31306ff2e5f6b76349b0b4389
+UNVERIFIED: whether PDEBench's train/test split equals experiments/darcy_validate.py's (first 9,000 train incl. 500 val, last 1,000 test)
+transcribed by Claude from the PDF the team provided; checked against the PDF by: (reviewer of this PR)
+fno_test_rel_l2: 0.064
