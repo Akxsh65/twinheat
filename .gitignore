@@ -28,6 +28,7 @@ venv/
 
 # viewer build output and generated demo streams (server/demo_stream.py)
 viewer/dist/
+viewer/public/demo/
 server/demo/
 
 # study material kept out of git (large PDF, local copies only)

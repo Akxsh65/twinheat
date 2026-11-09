@@ -1,6 +1,7 @@
-// Inferno colour lookup table (CLAUDE.md §13 T1.3: inferno is the default LUT).
+// Colour lookup tables (CLAUDE.md §13 T1.3): inferno (default), ironbow, white-hot; switchable
+// at runtime with setLut().
 //
-// The 256 entries are matplotlib's "inferno" (CC0, van der Walt & Smith), exported from
+// inferno: the 256 entries are matplotlib's "inferno" (CC0, van der Walt & Smith), exported from
 // matplotlib 3.10.9 and rounded to 8-bit sRGB:
 //   python -c "from matplotlib import colormaps; c = colormaps['inferno'];
 //     print(''.join('%02x%02x%02x' % tuple(round(255*v) for v in c(i)[:3]) for i in range(256)))"
@@ -31,6 +32,53 @@ export const INFERNO_HEX =
   "f9cb35f8cd37f8cf3af7d13df7d340f6d543f6d746f5d949f5db4cf4dd4ff4df53f4e156f3e35af3e55df2e661f2e865" +
   "f2ea69f1ec6df1ed71f1ef75f1f179f2f27df2f482f3f586f3f68af4f88ef5f992f6fa96f8fb9af9fc9dfafda1fcffa4";
 
+const hex2 = (v) => v.toString(16).padStart(2, "0");
+
+/** white-hot: the sRGB grey ramp, entry i = (i, i, i); the usual thermal-camera monochrome mode. */
+export const WHITE_HOT_HEX = Array.from({ length: LUT_SIZE }, (_, i) => hex2(i).repeat(3)).join("");
+
+/**
+ * ironbow: the thermal-camera look (black, indigo, magenta, red, orange, yellow, white). There is
+ * no standard table in docs/refs (vendors' versions differ), so these control points are our own
+ * display choice, not a camera vendor's palette; chosen so luminance rises monotonically (tested).
+ * Entries interpolate linearly in sRGB between the stops. [position in [0, 1], [r, g, b]].
+ */
+export const IRONBOW_STOPS = Object.freeze([
+  [0.0, [0, 0, 0]],
+  [0.15, [30, 0, 110]],
+  [0.35, [140, 0, 156]],
+  [0.55, [224, 50, 42]],
+  [0.75, [250, 145, 0]],
+  [0.9, [255, 216, 48]],
+  [1.0, [255, 255, 255]],
+]);
+
+function stopsHex(stops) {
+  let out = "";
+  for (let i = 0; i < LUT_SIZE; i++) {
+    const t = i / (LUT_SIZE - 1);
+    let k = 1;
+    while (stops[k][0] < t) k++;
+    const [t0, c0] = stops[k - 1];
+    const [t1, c1] = stops[k];
+    const a = (t - t0) / (t1 - t0);
+    out += c0.map((c, j) => hex2(Math.round(c + a * (c1[j] - c)))).join("");
+  }
+  return out;
+}
+
+export const IRONBOW_HEX = stopsHex(IRONBOW_STOPS);
+
+const LUTS = Object.freeze({ inferno: INFERNO_HEX, ironbow: IRONBOW_HEX, "white-hot": WHITE_HOT_HEX });
+export const LUT_NAMES = Object.freeze(Object.keys(LUTS));
+export const DEFAULT_LUT = "inferno";
+
+/** The RRGGBB table of a named LUT; throws naming the unknown name. */
+export function lutHex(name) {
+  if (!Object.hasOwn(LUTS, name)) throw new RangeError(`unknown LUT ${JSON.stringify(name)}; have ${LUT_NAMES.join(", ")}`);
+  return LUTS[name];
+}
+
 /** Decode a 256-entry RRGGBB string into RGBA8 bytes (alpha 255); throws on a malformed table. */
 export function lutBytes(hex = INFERNO_HEX) {
   if (hex.length !== 6 * LUT_SIZE || !/^[0-9a-f]+$/.test(hex)) {
@@ -44,9 +92,15 @@ export function lutBytes(hex = INFERNO_HEX) {
   return out;
 }
 
-/** 256 x 1 RGBA8 texture of the LUT. The shader samples texel centres: u = (t * 255 + 0.5) / 256. */
-export function createLutTexture(hex = INFERNO_HEX) {
-  const t = new DataTexture(lutBytes(hex), LUT_SIZE, 1, RGBAFormat, UnsignedByteType);
+/** Switch a LUT texture to the named table in place (one re-upload, no new texture). */
+export function setLut(texture, name) {
+  texture.image.data.set(lutBytes(lutHex(name)));
+  texture.needsUpdate = true;
+}
+
+/** 256 x 1 RGBA8 texture of a named LUT. The shader samples texel centres: u = (t * 255 + 0.5) / 256. */
+export function createLutTexture(name = DEFAULT_LUT) {
+  const t = new DataTexture(lutBytes(lutHex(name)), LUT_SIZE, 1, RGBAFormat, UnsignedByteType);
   t.colorSpace = NoColorSpace;
   t.minFilter = LinearFilter;
   t.magFilter = LinearFilter;

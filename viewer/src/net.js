@@ -41,13 +41,27 @@ function sameBits(a, b) {
   return true;
 }
 
-/** The 4 layer textures plus the colour range (K) of the field they show. */
+/**
+ * The 4 layer textures plus the colour range (K) of the field they show, and a CPU-side Float32
+ * copy of the same values ([layer, y, x], K) for the probe (src/probe.js).
+ */
 export class LayerTextures {
   constructor() {
     this.n = 1;
     this.min = 0;
     this.max = 0;
     this.textures = Array.from({ length: N_LAYERS }, () => makeTexture(1, new Uint16Array(1)));
+    this.values = new Float32Array(N_LAYERS);
+  }
+
+  /** θ (K) at layer l (0 = L1), row y (0 = south), column x (0 = west), exactly as displayed. */
+  valueAt(l, y, x) {
+    const n = this.n;
+    if (!(Number.isInteger(l) && l >= 0 && l < N_LAYERS)) throw new RangeError(`layer must be 0..${N_LAYERS - 1}, got ${l}`);
+    if (!(Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < n && y < n)) {
+      throw new RangeError(`cell (x ${x}, y ${y}) outside the ${n} x ${n} grid`);
+    }
+    return this.values[(l * n + y) * n + x];
   }
 
   /**
@@ -68,6 +82,7 @@ export class LayerTextures {
         return makeTexture(n, bits.slice(l * per, (l + 1) * per));
       });
       this.n = n;
+      this.values = new Float32Array(N_LAYERS * per);
     } else {
       this.textures.forEach((t, l) => {
         const slice = bits.subarray(l * per, (l + 1) * per);
@@ -76,6 +91,10 @@ export class LayerTextures {
         t.needsUpdate = true;
         updated.push(l);
       });
+    }
+    const table = halfTable();
+    for (const l of updated) {
+      for (let i = l * per; i < (l + 1) * per; i++) this.values[i] = table[bits[i]];
     }
     this.min = min;
     this.max = max;
@@ -137,20 +156,21 @@ export function decodeField(msg, kind) {
 export function processMessage(raw) {
   try {
     const { kind, msg } = parseMessage(raw);
-    return { ok: true, kind, field: RENDERED_FIELD[kind] ? decodeField(msg, kind) : null };
+    return { ok: true, kind, id: msg.id ?? null, field: RENDERED_FIELD[kind] ? decodeField(msg, kind) : null };
   } catch (e) {
     return { ok: false, error: e.message };
   }
 }
 
 /**
- * Return handle(raw) -> {ok, kind, updated} | {ok: false, error}, which runs processMessage
+ * Return handle(raw) -> {ok, kind, id, updated} | {ok: false, error}, which runs processMessage
  * inline. handle.apply(result) takes a processMessage result (e.g. from the worker) and does the
  * cheap half: count it and, if it is valid and rendered, update the textures. handle.status holds
- * what the dev overlay shows: lastType (last valid message), lastError, received, rejected.
+ * what the dev overlay shows: lastType (last valid message), lastId (id of the field on screen),
+ * lastError, received, rejected.
  */
 export function createHandler({ textures, log = console.warn }) {
-  const status = { lastType: null, lastError: null, received: 0, rejected: 0, worker: null };
+  const status = { lastType: null, lastId: null, lastError: null, received: 0, rejected: 0, worker: null };
   function reject(error) {
     status.rejected += 1;
     status.lastError = error;
@@ -170,7 +190,8 @@ export function createHandler({ textures, log = console.warn }) {
       }
     }
     status.lastType = result.kind;
-    return { ok: true, kind: result.kind, updated };
+    if (result.field) status.lastId = result.id ?? null; // id of the field now shown
+    return { ok: true, kind: result.kind, id: result.id ?? null, updated };
   }
   const handle = (raw) => apply(processMessage(raw));
   handle.apply = apply;
