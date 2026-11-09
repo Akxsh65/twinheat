@@ -133,6 +133,24 @@ Open. Owner M, due week 6. Goes to `experiments/configs/frozen.yaml`.
 - **Consequence:** week 3 is 2 to 8 November, and the week-12 end is 10 January 2027.
 - **Owners to confirm:** all three.
 
+## D7 · ACI upper boundary
+
+- **Decision (2026-11-07, M):** when α_k ≥ 1 the prediction set is empty, so **err = 1** whatever S⁺ is,
+  as Gibbs & Candès Lemma 4.1 requires. q is still reported as 0 there (B = 0), as in CLAUDE.md §8.2.
+- **Consequence:** α_k ∈ [−γ, 1 + γ] and |mean(err) − α| ≤ C/(γ n_a) hold exactly, and are hard unit tests
+  (`tests/test_aci.py`).
+- **Implemented in:** `gate/aci_audit.py` (M3.1).
+
+## D8 · Quantile level
+
+- **Decision (2026-11-07, M):** every quantile, both at calibration and in the ACI window, is the
+  split-conformal one: the ⌈(n+1)(1−α)⌉-th smallest of n scores ("higher" interpolation), and ∞ when that
+  rank exceeds n (CLAUDE.md §18.2).
+- **Implemented in:** `gate/aci_audit.py::conformal_quantile`. G2 and G3 (`gate/baselines.py`) use the same
+  function.
+- **Note:** CLAUDE.md §9.3's `quantile(scores, 1 − alpha_t)` is to be read with this level. The §17 rows
+  for D7 and D8 should be marked decided in a CLAUDE.md PR.
+
 ## Other decisions
 
 - **GPU access (2026-10-24):** Kaggle and Colab runs of `scripts/check_gpu.py` are skipped for now, since
