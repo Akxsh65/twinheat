@@ -149,13 +149,75 @@ Open. Owner M, due week 6. Goes to `experiments/configs/frozen.yaml`.
 - **Implemented in:** `gate/aci_audit.py::conformal_quantile`. G2 and G3 (`gate/baselines.py`) use the same
   function.
 - **Note:** CLAUDE.md §9.3's `quantile(scores, 1 − alpha_t)` is to be read with this level. The §17 rows
-  for D7 and D8 should be marked decided in a CLAUDE.md PR.
+  for D7 and D8 should be marked decided in a CLAUDE.md PR (done 2026-11-12, branch m/d13-d9-decisions).
+
+## D9 · G6 / MVP settings
+
+Source for every MVP term below: `docs/refs/bastani2022_mvp.txt` (Bastani et al. 2022, arXiv 2206.01067v1).
+
+- **Decision (2026-11-12, M), design rules (fixed now):**
+  1. **Previews never show a randomised threshold.** A `query` reads the G6 state as it stood after the last
+     commit and shows the deterministic upper candidate q = i*/m_MVP (the more conservative of MVP's two
+     candidates, so the previewed B is never below the committed one). It never draws MVP's coin, never
+     draws score noise, and never writes gate state (B8).
+  2. **MVP's randomisation is drawn once per committed design,** by the server, after `coin.commit(id)`,
+     from a seeded `numpy.random.Generator(PCG64)` stream owned by the G6 gate (separate from the audit
+     coin's stream, so adding G6 does not change the G5 coin sequence). The draw is logged in the audit log
+     and never re-rolled.
+  3. **Only audited steps update MVP** (B8, CLAUDE.md §18.3), with the certified upper score S⁺ (Lemma 1′)
+     mapped by S̃ = S⁺/(1 + S⁺) (paper footnote 10). Thresholds map back by q = q̃/(1 − q̃).
+  4. **Smoothness noise, if used, is non-negative and added before the map:** S̃ = (S⁺ + U)/(1 + S⁺ + U),
+     U ~ Uniform[0, w], drawn after commit and hidden like the coin. This keeps S̃ in [0, 1) without
+     clipping (CLAUDE.md §0 rule 5), and because S⁺ + U ≥ S⁺ ≥ S, an accepted large error still counts as
+     a miss (the Lemma 1′ direction). UNSURE: the checker (§2) should confirm this argument; the smoothness
+     bound ρ ≤ 1/(r·m_MVP·w) of CLAUDE.md §18.3 is for noise on S̃, not on S, and needs re-deriving.
+- **Numeric settings: not decided here.** m_MVP, r, ϵ, w (and η, which Theorem 3.1 fixes once K_ϵ, |𝒢| and
+  m_MVP are known) go in `experiments/configs/frozen.yaml` under D4 (week 6), chosen on validation
+  trajectories. Development default for m_MVP only: 40, the bucket count used in every experiment of the
+  paper. The paper states no values of r, ϵ or η for its experiments, so the code takes them as required
+  arguments with no defaults.
+- **Owner:** M. Due before E15.
+
+## D13 · G1 details
+
+Source: `docs/refs/deepoheat_v2_alg1.txt` (DeepOHeat-v2, arXiv 2608.16080v1, Algorithm 1).
+
+- **Decision (2026-11-12, M):** the G1 used in E7 and E8 is DeepOHeat-v2's gate on TwinHeat's shared
+  signal, with no C-event cutoff:
+  - **Residual:** r_hot divided by diag A (kelvin), over the m hottest predicted cells, with the m shared
+    by all gates (CLAUDE.md §8.1, default 64). The paper uses the raw residual A T̂ − b (watts) and m = 100.
+  - **Signal:** r_hot alone, as in the paper (no ensemble spread; that is G5's s_t).
+  - **Threshold:** FIFO window of |W| = 100 (CLAUDE.md §11.1). r_hot of **every** proposal is pushed
+    before the comparison, so the window includes the current value (Algorithm 1, lines 6–7). Flag if
+    r_hot > Q_{1−f}(W), with Q the ⌈(1−f)·|W|⌉-th smallest value ("higher", as in D8). The first |W|
+    proposals are not flagged (line 2) and count as accepted in M1. f is tuned to the exact-solve budget
+    (§11.1).
+  - **C rule: off.** The gate stays active for the whole run.
+- **Why:**
+  - Same signal for every gate, so E7/E8 compare threshold rules (flag-rate percentile vs. audited
+    conformal), not residual definitions. Dividing by diag A matters on our boards: the diagonal varies
+    about 56× across cells (3.9e-3 to 0.219 W/K, measured with `solvers.fvm` on 50 sampler boards
+    while writing N4.1; a design check, not a report number), so the raw residual
+    in watts ranks cells by copper coverage as much as by error. Because the scaling is per cell, it
+    changes which proposals G1 flags; it is not a monotone rescaling of r_hot.
+  - The C rule counts retraining events. E7 scores all gates offline on one oracle-labelled trajectory
+    set with no retraining (CLAUDE.md §11.5), so the rule has nothing to count there. In E8, stopping after
+    C = 3 events (ΔN = 50, i.e. 150 refinements) would leave the rest of the run unchecked. At equal
+    exact-solve budget, that measures the cutoff, not the gate.
+- **Paper-faithful variant:** M3.2 builds both differences into G1 in `gate/baselines.py` as switches
+  (`residual="raw"`, `c_events=3`, with m = 100, f = 0.30, ΔN = 50 from the paper's Table III). If E8's budget allows, it is
+  reported as one sensitivity row labelled "G1 (DeepOHeat-v2 settings)", never as the main G1.
+- **Owner:** M. Due before E7.
 
 ## Other decisions
 
 - **GPU access (2026-10-24):** Kaggle and Colab runs of `scripts/check_gpu.py` are skipped for now, since
   college GPU access may be available. One Kaggle 2×T4 run is on record in `docs/compute.md`.
 - 2026-10-24 · CLAUDE.md: added §18 (implementation notes from the literature survey, distilled from the eight study guides), open decisions D7–D14 in §17, and cross-references in §8.2 (Tu & Giesecke v2 numbering note), §8.4, §8.5, §11.1 (G1, G2 rows) and §16.2. No existing constant, invariant or decision changed. Branch `m/claude-md-survey-notes`; needs PR review by N and M.
+
+- 2026-11-12 · CLAUDE.md §17: rows D7, D8, D9 and D13 now say where their decision is recorded (this file).
+  D9 is marked partly decided: its design rules are fixed, its numbers go to D4. No constant, invariant or
+  other row changed. Branch `m/d13-d9-decisions`; needs PR review by N.
 
 ## Dataset v1 split seeds (N2.1)
 

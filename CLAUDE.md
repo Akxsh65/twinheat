@@ -603,13 +603,13 @@ DeepOHeat-v2 (Yu et al., arXiv 2608.16080, 2026) · Gibbs & Candès, ACI, NeurIP
 | D4 | Frozen gate hyperparameters α, τ, γ, W, λ, m, p, ε_S, p_min, chosen on validation trajectories → `experiments/configs/frozen.yaml` | M | wk 6 |
 | D5 | Week-3 go/no-go outcome (keep 256²×4, or 6 layers / 384²) | N + M | wk 3 |
 | D6 | Week-1 start date of the 12-week schedule | all | wk 0 |
-| D7 | ACI upper boundary: §8.2 sets q = 0 when α_k ≥ 1, so err = 1[S⁺ > 0]; Gibbs & Candès Lemma 4.1 needs err = 1 whenever α_k > 1. Force err = 1 there, or keep q = 0? (differs only if S⁺ = 0 exactly) (§18.1) | M (Lemma 1 checker) | before gate code |
-| D8 | G2 initial quantile: plain `quantile(scores, 1 − α)` (§9.3) or the split-conformal level ⌈(n+1)(1−α)⌉/n with "higher" interpolation (§18.2); and whether the ACI path uses the same correction | M | before gate code |
-| D9 | G6 / MVP settings: bucket count m_MVP, grid factor r, ε, score-noise width for smoothness; whether they go in `frozen.yaml` under D4; whether `query` previews may show a randomised q_{t,g} or only a value fixed at commit (§18.3) | M | before E15 |
+| D7 | ACI upper boundary: §8.2 sets q = 0 when α_k ≥ 1, so err = 1[S⁺ > 0]; Gibbs & Candès Lemma 4.1 needs err = 1 whenever α_k > 1. Force err = 1 there, or keep q = 0? (differs only if S⁺ = 0 exactly) (§18.1). **Decided 2026-11-07: err = 1, see `docs/decisions.md`** | M (Lemma 1 checker) | before gate code |
+| D8 | G2 initial quantile: plain `quantile(scores, 1 − α)` (§9.3) or the split-conformal level ⌈(n+1)(1−α)⌉/n with "higher" interpolation (§18.2); and whether the ACI path uses the same correction. **Decided 2026-11-07: split-conformal level everywhere, see `docs/decisions.md`** | M | before gate code |
+| D9 | G6 / MVP settings: bucket count m_MVP, grid factor r, ε, score-noise width for smoothness; whether they go in `frozen.yaml` under D4; whether `query` previews may show a randomised q_{t,g} or only a value fixed at commit (§18.3). **Partly decided 2026-11-12: design rules in `docs/decisions.md`; numbers go to D4** | M | before E15 |
 | D10 | Production PCG preconditioner `Minv`, and confirmation that it is SPD (symmetric V-cycle: symmetric smoothing, R = Pᵀ) (§18.5) | N | before `solvers/pcg.py` merges |
 | D11 | Narrow the §8.4 fallback wording? Meurant & Tichý needs SPD A and a guaranteed μ ≤ λ_min; it covers neither failure case §7.2 names (§18.5) | N | — |
 | D12 | Correct the Tu & Giesecke theorem numbers in §8.2 to v2 (Prop. 5.5, Thm 5.9) and regenerate `docs/refs/tu_giesecke_thm54_56.txt` from v2 | N + M | — |
-| D13 | G1 details not fixed by §11.1: residual definition (paper: raw (A T̂ − b); ours: divided by diag A), and whether G1 copies the paper's stop-checking-after-C-events rule (§18.4) | M | before E7 |
+| D13 | G1 details not fixed by §11.1: residual definition (paper: raw (A T̂ − b); ours: divided by diag A), and whether G1 copies the paper's stop-checking-after-C-events rule (§18.4). **Decided 2026-11-12: residual ÷ diag A, shared m, no C rule; see `docs/decisions.md`** | M | before E7 |
 | D14 | Audit delay bound: maximum number of steps D an audit solve may take before its label is used, enforced by a label-independent `maxit` (§18.1, Tu & Giesecke Prop. B.15) | N + M | before E14 |
 
 ---
