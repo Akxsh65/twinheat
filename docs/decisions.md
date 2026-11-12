@@ -223,3 +223,20 @@ dataset: PASS, 13 splits, 13,500 boards, 0 problems (data/verify_report.md). Thi
 generated: ood_bottom_chips" in the split-seeds entry above. The full-dataset hash changes; the
 train-split hash (norm stats, ensemble members) does not. experiments/configs/e5.yaml now lists
 the split. Owners to confirm: N + M.
+
+## GPU runs on the college A100 (rvcse), 2026-11-12
+Every remaining GPU run moves from Kaggle T4 to the college GPU server rvcse (`rvcecsegpuserver`,
+NVIDIA A100-PCIE-40GB), which already ran every GPU job so far (N1.4 tests, N1.5, dataset v1, N2.2,
+M1.3, M2.2). This extends the storage entry above, whose "Unchanged: Kaggle T4 runs that need no
+dataset (N1.4 bandwidth table, @gpu tests)" no longer holds. Reason: one machine of record, so the
+PAGP chapter does not put a T4 bandwidth table next to A100 solver timings. Kaggle stays a
+fallback only.
+- `bench/stencil_bw.py`: the hard-coded T4 peak (320 GB/s) is removed. `--peak-gbs` and
+  `--peak-source` are now required and written into every CSV row. The A100 value is taken from
+  NVIDIA's datasheet and recorded in `docs/refs/` by a person, not filled in from memory
+  (CLAUDE.md §0 rule 1).
+- Changed: CLAUDE.md §4 (Compute line, GPU tests, torch/requirements wording), the plan's N1.4
+  DONE WHEN, `gpu_instructions.md` (machines, open and done items, section 4), `docs/compute.md`
+  (rvcse section), Makefile and README `gpu-test`, docstrings in `bench/solver_bench.py` and
+  `tests/test_gpu_solvers.py`.
+- Owners to confirm: N + M.

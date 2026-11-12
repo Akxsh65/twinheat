@@ -92,10 +92,10 @@ twinheat/
 
 ## 4 · Environment and conventions
 
-- **Python 3.11**: numpy, scipy, pyamg, numba, pytorch (CUDA matching the Kaggle driver), cupy-cuda12x, fastapi, uvicorn, websockets, pydantic ≥ 2, jsonschema, pyyaml, pandas, pyarrow, matplotlib, pytest, ruff. Exact pins in `environment.yml` and `requirements.txt` (Kaggle).
+- **Python 3.11**: numpy, scipy, pyamg, numba, pytorch (CUDA matching the rvcse A100 driver), cupy-cuda12x, fastapi, uvicorn, websockets, pydantic ≥ 2, jsonschema, pyyaml, pandas, pyarrow, matplotlib, pytest, ruff. Exact pins in `environment.yml` and `requirements.txt` (pip route).
 - **Node 20**: Vite, three (pinned version), ajv. WebGL2 inside the headset. WebGPU only in desktop mode, optional.
-- **Compute**: Kaggle 2×T4 (about 30 GPU-h per account per week; check), Colab, laptop GPU, and a multi-core lab CPU for PyAMG and oracle solves. Real quotas are in `docs/compute.md`.
-- **pytest markers**: `slow`, `gpu`. CI runs `pytest -m "not slow and not gpu"` + `ruff` on every push, and slow tests nightly. GPU tests are run by hand on Kaggle and their log is pasted into the PR.
+- **Compute**: the college GPU server **rvcse** (`rvcecsegpuserver`: NVIDIA A100-PCIE-40GB GPUs, Intel Xeon Gold 6226R CPU) for every GPU run, for PyAMG and for oracle solves; it holds the dataset. Kaggle 2×T4, Colab and a laptop GPU are fallbacks only. Details in `docs/compute.md`; runs to do in `gpu_instructions.md` (`docs/decisions.md`, "GPU runs on the college A100").
+- **pytest markers**: `slow`, `gpu`. CI runs `pytest -m "not slow and not gpu"` + `ruff` on every push, and slow tests nightly. GPU tests are run by hand on the rvcse A100 and their log is pasted into the PR.
 - **Git**: `main` always green. Branches `n/<task>`, `m/<task>`, `g/<task>`. PRs need CI + one reviewer, and the reviewer runs tests locally for `solvers/ certify/ gate/`. Tags: `v0-contracts` (wk 1), `v1-solver` (wk 3), `v2-data` (wk 5), `v3-freeze` (wk 10), `v1.0-release` (wk 11).
 - **Large files** never go in git. Data and checkpoints live on the lab GPU server (rvcse) with an off-server copy on Drive, with hashes in `data/manifest.json` and `models/registry.json`.
 - **Figures**: every figure script writes a footer: git commit, dataset hash, seed, hardware, date. No footer, no figure.

@@ -478,7 +478,8 @@ TESTS FIRST (@gpu): stencil_apply_{naive,tiled} == scipy A @ x (rel 1e-6) on 20 
 pcg solution vs spsolve rel 1e-6; batched_pcg on 16 boards == 16 single solves; warm start from the exact solution
 converges in ≤ 1 iteration; dot_warp_shuffle == cupy.vdot (rel 1e-6).
 DONE WHEN: all GPU tests pass on a Kaggle T4 (paste log into the PR); achieved GB/s for naive vs tiled stencil recorded
-in bench/results/stencil_bw.csv vs ~320 GB/s peak.
+in bench/results/stencil_bw.csv vs the GPU's datasheet peak bandwidth (rvcse A100; value and source in
+docs/refs/, passed as --peak-gbs / --peak-source, never built in).
 REPORT BACK: files, Kaggle test log, bandwidth table, 3 ways it could still be wrong.
 ```
 

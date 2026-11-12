@@ -5,7 +5,7 @@ Three groups:
   gpu  solvers/cuda_kernels.py (Numba) against SciPy. Also runs on a laptop without a GPU under
        Numba's CUDA simulator, with small grids:
          NUMBA_ENABLE_CUDASIM=1 TWINHEAT_GPU_TEST_N=20 pytest -m gpu -k "not cupy"
-  gpu  solvers/pcg.py on CuPy with the Numba stencil operator ("cupy" in the name). Kaggle T4.
+  gpu  solvers/pcg.py on CuPy with the Numba stencil operator ("cupy" in the name). rvcse A100.
 
 Field arrays are [B, layer, y, x] (rule 7); the stencil coefficients are solvers/fvm.py
 coefficients(). Tolerances: 1e-6 relative is B3's; float64 kernels are held to 1e-12.
@@ -414,7 +414,7 @@ def test_red_black_sweep_matches_numpy_and_converges(ck):
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_dot_warp_shuffle_matches_float64_dot(ck, size, dtype):
     if SIM:
-        pytest.skip("the CUDA simulator has no warp shuffles (shfl_down_sync): T4 only")
+        pytest.skip("the CUDA simulator has no warp shuffles (shfl_down_sync): real GPU only")
     rng = np.random.default_rng(size)
     a, b = rng.standard_normal((2, size)).astype(dtype)
     got = float(host(ck.dot_warp_shuffle(ck.cuda.to_device(a), ck.cuda.to_device(b)))[0])
@@ -426,7 +426,7 @@ def test_dot_warp_shuffle_matches_float64_dot(ck, size, dtype):
 @pytest.mark.gpu
 def test_dot_warp_shuffle_batched_rows(ck):
     if SIM:
-        pytest.skip("the CUDA simulator has no warp shuffles (shfl_down_sync): T4 only")
+        pytest.skip("the CUDA simulator has no warp shuffles (shfl_down_sync): real GPU only")
     rng = np.random.default_rng(5)
     a, b = rng.standard_normal((2, 5, 4, 20, 20)).astype(np.float32)
     got = host(ck.dot_warp_shuffle(ck.cuda.to_device(a), ck.cuda.to_device(b)))

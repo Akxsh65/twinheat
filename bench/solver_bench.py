@@ -1,7 +1,7 @@
 """Solver comparison and cost go/no-go (N1.5; CLAUDE.md §7.3, §11.5 E3, §17 D5).
 
     python -m bench.solver_bench --part cpu     # on the machine that will run oracle labels
-    python -m bench.solver_bench --part gpu     # on a Kaggle T4
+    python -m bench.solver_bench --part gpu     # on the rvcse A100
     python -m bench.solver_bench --figure       # table -> bench/figs/solver_table_v1.png
 
 Boards: the 20 fixed boards are sampler seeds 0..19 (mode "id", their own Dirichlet edges),
