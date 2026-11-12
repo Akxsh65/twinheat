@@ -12,7 +12,7 @@ batch: 4                        # inference batch (memory only; does not change 
 # ID test and every OOD set of dataset v1 (§7.4 v2; ood_5 is not OOD on 4 layers, docs/decisions.md).
 # ood_bottom_chips is listed once generated (gpu_instructions.md section 6); the model has no L4
 # heat channel, so it is expected to fail there and the rule check sends those boards to the solver.
-splits: [test, ood_1, ood_2, ood_3, ood_4, ood_6, ood_7, ood_3oz, ood_dense_vias]
+splits: [test, ood_1, ood_2, ood_3, ood_4, ood_6, ood_7, ood_3oz, ood_dense_vias, ood_bottom_chips]
 
 models:                         # label -> registry selection (models/ensemble.py)
   ensemble:          {arch: fno, stage: ft256, variant: base}                 # mean of the 5 members

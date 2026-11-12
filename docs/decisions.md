@@ -215,3 +215,11 @@ checkpoints live on rvcse with an off-server copy on Drive, hashes in data/manif
 models/registry.json as before. The Drive copy stays required (rvcse is shared and is the only
 copy). Unchanged: Kaggle T4 runs that need no dataset (N1.4 bandwidth table, @gpu tests) and
 notebooks/train_member.ipynb (kept as a fallback template). Needs review by N and M.
+
+## Dataset v1: ood_bottom_chips added (N2.1), 2026-11-12
+Generated after the generator fix (branch n/ood-bottom-chips) at commit 23ff3f3, seed 2026, 500 boards,
+rvcse A100 GPU 2; 0.4 % of boards rescaled to theta_max = 100 K. data.verify_dataset on the whole
+dataset: PASS, 13 splits, 13,500 boards, 0 problems (data/verify_report.md). This replaces "Not
+generated: ood_bottom_chips" in the split-seeds entry above. The full-dataset hash changes; the
+train-split hash (norm stats, ensemble members) does not. experiments/configs/e5.yaml now lists
+the split. Owners to confirm: N + M.
