@@ -58,6 +58,11 @@ class AuditCoin:
         self._drawn[design_id] = a
         return a
 
+    def committed(self, design_id: str) -> bool:
+        """Whether commit(design_id) has happened (G6 draws its own randomisation only after
+        it, D9)."""
+        return design_id in self._committed
+
     def audited(self, design_id: str) -> bool:
         if design_id not in self._drawn:
             raise CoinError(f"the coin for {design_id!r} has not been drawn")
