@@ -194,3 +194,13 @@ Early stopping patience 10 on validation hotspot error (K), as coded. lr 1e-3 / 
 1e-4, w_hot 0.1, AMP: models/train_ensemble.py defaults. Basis: rvcse A100 timing run (eb1b3ac),
 about 14 s/epoch at 128^2 and 2.6 min/epoch at 256^2. Revisit ft256 epochs after member 1 if its
 validation curve has not flattened. All members train on rvcse GPU 0. Owner: M.
+
+## Ensemble members 2-5 run (M2.2), 2026-11-12
+Members 2-5 trained at commit 157bfb8 (code identical to c1b0692; the tree was dirty only through
+models/registry.json, which the runs write). Deviation from the settings entry of 2026-11-09:
+members ran two at a time, 2 and 4 on rvcse GPU 0 and 3 and 5 on rvcse GPU 2 (both
+A100-PCIE-40GB, CUDA_DEVICE_ORDER=PCI_BUS_ID). Commands and settings as for member 1. Paired
+ft256 runs were disk-bound, so wall-clock gpu_hours are not comparable with member 1's.
+Open item (M): every member's best val rel. L2 is above the week-5 target of CLAUDE.md 12 (3 %);
+val hotspot error is below 1.5 K for all five. Summaries: experiments/results/ensemble/.
+Decision pending.
