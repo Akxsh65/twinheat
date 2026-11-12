@@ -1,0 +1,152 @@
+source: Bastani, Gupta, Jung, Noarov, Ramalingam & Roth, "Practical Adversarial Multivalid Conformal Prediction", arXiv 2206.01067v1 [cs.LG], 2 Jun 2022 (NeurIPS 2022)
+location: Sec. 2.1 and footnote 3 (p. 4); Sec. 2.2 protocol (p. 5-6); buckets and H (p. 6); Definition 2.1, α(n), f(n), K_ϵ (p. 7); Definition 3.1, Observation 3.1, Remark 3.1 (p. 8); Algorithm 1, Theorem 3.1, Remark 3.2 (p. 9); Definitions 3.2-3.3, Observation 3.2 (p. 10); Definition 3.4, Lemma 3.1 (p. 11); Sec. 4.3.2 (p. 21); footnote 10 (p. 20); bucket count used in the experiments (Sec. 4.1.2 p. 15, 4.1.3 p. 16, 4.2.1 p. 18, 4.2.2 p. 19, 4.4 p. 23). Printed page = PDF page.
+used by: G6 (CLAUDE.md §8.5, §11.1, §18.3; open decision D9); prompt M3.2
+notation: subscripts after "_", superscripts after "^". 1[·] = indicator. H̄(S) is printed with a bar over H. ϵ is the paper's constant in f(n), not our ε. Name clashes with TwinHeat: MVP's m = number of buckets (ours: hottest cells); MVP's δ = our α; MVP's α(·) is a function.
+transcribed by Claude from the PDF the team provided: text extracted with pdftotext, every formula checked against the rendered page images; checked against the PDF by: (reviewer of this PR)
+
+Everything between the ==== lines is the paper's text, kept word for word, typos included (marked [sic], with the likely intended reading in a [TwinHeat] note at the end). Notes marked [TwinHeat] are ours and are not in the paper.
+
+==================================================================== Sec. 2.1 Notation (p. 4)
+
+We let X denote a feature domain and Y a label domain. We write G ⊆ 2^X to denote a collection of subsets of X. Given any x ∈ X, we write G(x) for the set of groups that contain x, i.e. G(x) = {G ∈ G : x ∈ G}. For any positive integer T, we write [T] = {1, ..., T}. In general, we denote random variables with tildes (e.g. X~, Y~) to distinguish them from their realizations (denoted e.g. X, Y). Given a set A, we write ΔA for the probability distribution over the elements in A.
+
+Footnote 3 (p. 4): When s_t(x, y) ∈ [L, U], then we can have the learner use the conformal score s′_t(x, y) = (s_t(x, y) − L)/(U − L). When the learner produces a conformity threshold q′_t with respect to the new scoring function s′_t, we may obtain a threshold q_t with respect to the original score s_t by setting q_t = q′_t(U − L) + L.
+
+==================================================================== Sec. 2.2 protocol (p. 5-6)
+
+[...] we assume that the scoring function takes values in the unit interval: s_t(x, y) ∈ [0, 1] for any x ∈ X, y ∈ Y, and t ∈ [T]. Fix some target coverage rate 1 − δ. In each round t ∈ [T], an interaction between a learner and an adversary proceeds as follows:
+1. The learner chooses a conformal score function s_t : X × Y → [0, 1], which may be observed by the adversary.
+2. The adversary chooses a joint distribution over feature vectors x_t ∈ X and labels y_t ∈ Y. The learner receives x_t (a realized feature vector), but no information about the label y_t.
+3. The learner produces a conformity threshold q_t. This corresponds to a prediction set which the learner outputs: T_t(x_t) = {y ∈ Y : s_t(x_t, y) ≤ q_t}.
+4. The learner then learns the realized label y_t.
+
+[...] We may thus view the interaction in the following simplified form:
+1. The adversary chooses a joint distribution over feature vector x_t ∈ X and conformal score s_t ∈ [0, 1]. The learner receives x_t (a realized feature vector), but no information about s_t.
+2. The learner produces a conformity threshold q_t.
+3. The learner observes the realized conformal score s_t.
+
+For any round t ∈ [T], we write π_t = (x_t, s_t, q_t) to denote the realized outcomes in round t and similarly write π_{t′:t} for the transcript of the interaction between rounds t′ ≤ τ ≤ t: π_{t′:t} = ((x_τ, s_τ, q_τ))_{τ=t′}^t. [...]
+
+Given a transcript π_{1:T}, a group G ∈ G and a set of rounds S ⊆ [T], we write
+    G_S = {t ∈ S : x_t ∈ G}.
+[...] for a group G ∈ G, and a period t ≤ T, write G_t to denote the set of data points (indexed by their rounds) in a transcript π_{1:t} that are members of the group G:
+    G_t = {τ ∈ [t] : x_τ ∈ G}.
+Given some threshold q, we say the conformity threshold covers the conformal score s if
+    Cover(q, s) ≡ 1[s ≤ q] = 1.
+For any S ⊆ [T] we define
+    H̄(S) = (1/|S|) Σ_{t ∈ S} Cover(q_t, s_t)
+to denote the empirical coverage rate over the set of rounds S.
+
+To define threshold calibration, we bucket our thresholds using a discretization parameter m. For any m and bucket index i ∈ [m − 1], we write B_m(i) = [(i−1)/m, i/m) and B_m(m) = [(n−1)/m, 1] [sic] so that these buckets evenly partition the unit interval [0, 1]. Conversely, given a threshold q ∈ [0, 1], we write B_m^{-1}(q) ∈ [m] for the index of the bucket that w [sic] belongs to: B_m^{-1}(q) = i, for i such that q ∈ B_m(i). When clear from the context, we elide the subscript n [sic] and write B(i) and B^{-1}(q).
+For any S ⊆ [T] and i ∈ [n] [sic], we define S(i) to be the subset of rounds in S in which the learner's threshold falls in bucket i. Formally,
+    S(i) = {t ∈ S : q_t ∈ B_m(i)}.
+
+==================================================================== Definition 2.1, α(n), f(n), K_ϵ (p. 7)
+
+Definition 2.1 (Threshold Calibrated Multivalid Coverage). Fix a coverage target 1 − δ and a collection of groups G ⊂ 2^X. Given a transcript π_{1:T}, a sequence of conformity thresholds (q_t)_{t=1}^T is said to be (α, m)-multivalid with respect to δ and G for some function α : N → R, if for every i ∈ [m] and G ∈ G, the following holds true:
+    |H̄(G_T(i)) − (1 − δ)| ≤ α(|G_t(i)|) [sic]
+
+[...] Throughout this paper we use following family of functions, parameterized by a constant ϵ > 0:
+    α(n) = f(n)/n    and    f(n) = sqrt((n + 1) log^{1+ϵ}(n + 2))
+A useful fact is that the series 1/f(n)^2 is convergent: Σ_{n=0}^∞ 1/f(n)^2 = K_ϵ where K_ϵ is a constant depending only on our choice of ϵ that will appear in our bounds.
+
+==================================================================== Definition 3.1, Observation 3.1, Remark 3.1 (p. 7-8)
+
+To denote the uniform grid on [0, 1], we write
+    P^{rn} = {0, 1/(rm), 2/(rm), ..., 1}. [sic]
+
+Definition 3.1. A distribution Q ∈ Δ([0, 1]) is (ρ, rm)-smooth if for any 0 ≤ a ≤ b ≤ 1 such that |a − b| ≤ 1/(rm),
+    Pr_{s∼Q}[s ∈ [a, b]] ≤ ρ.
+We say that a joint distribution D ∈ Δ(X × [0, 1]) is (ρ, rm)-smooth if for every x ∈ X, the marginal conformal score conditional on x, D|_x, is (ρ, rm)-smooth. We say an adversary is (ρ, rm)-smooth if the joint distribution over (x_t, s_t) is (ρ, rm)-smooth at every round t ∈ [T].
+
+Observation 3.1. For any δ ∈ [0, 1], fixed (ρ, rm)-smooth score distribution Q ∈ Δ[0, 1], there always exists some threshold q ∈ P^{rm} such that
+    |Pr_{s∼Q}[Cover(q, s)] − (1 − δ)| ≤ ρ.
+
+Remark 3.1. For any ρ, the assumption of (ρ, rm)-smoothness becomes more mild as r → ∞. For us, r will be a nuisance parameter that we can choose to be as large as we want — we will not have to pay for it either in our running time or our coverage bounds. We can also algorithmically enforce smoothness by perturbing the conformal scores with small amounts of noise from any continuous distribution, and so we should think of smoothness as a mild assumption. Our experiments bear this out.
+
+==================================================================== Algorithm 1 (p. 9)
+
+Algorithm 1: MVP(η, n, r) [sic: the bucket count is m everywhere else]
+for t = 1, ..., T do
+    Take as input an arbitrary conformal score s_t : X × Y → [0, 1]
+    Observe x_t and for each i ∈ [m] and G ∈ G(x_t), compute
+
+        n_{t−1}^{G,i} = ( Σ_{τ=1}^{t−1} 1[q_τ ∈ B(i), x_τ ∈ G] )                              Definition 3.2
+        V_{t−1}^{G,i} = Σ_{τ=1}^{t−1} 1[x_τ ∈ G, q_τ ∈ B_m(i)] · (Cover(q_τ, s_τ) − (1 − δ))    Definition 3.3
+        C_{t−1}^i(x_t) = Σ_{G ∈ G(x_t)} [ exp(η V_t^{G,i} / f(n_t^{G,i})) − exp(−η V_t^{G,i} / f(n_t^{G,i})) ] / f(n_t^{G,i})    From Lemma 3.1
+                         [sic: right-hand side printed with subscript t, not t−1]
+
+    if C_{t−1}^i(x_t) > 0 for all i ∈ [m] then
+        Output q_t = 0.
+    else if C_{t−1}^i(x_t) < 0 for all i ∈ [m] then
+        Output q_t = 1.
+    else
+        Find i* ∈ [m − 1] such that C_{t−1}^{i*}(x_t) · C_{t−1}^{i*+1}(x_t) ≤ 0
+        Define 0 ≤ p_t ≤ 1 as follows (using the convention that 0/0 = 1):
+            p_t = |C_{t−1}^{i*+1}(x_t)| / ( |C_{t−1}^{i*+1}(x_t)| + |C_{t−1}^{i*}(x_t)| ).
+        Choose threshold q_t = i*/m − 1/(rm) with probability p_t and q_t = i*/m with probability 1 − p_t.
+    Output prediction set T_t(x_t) = {y ∈ Y : s_t(x_t, y) ≤ q_t}
+
+==================================================================== Theorem 3.1, Remark 3.2 (p. 9)
+
+Theorem 3.1. Set η = sqrt( ln(|G|m) / (2 K_ϵ |G| m) ). Against any (ρ, rm)-smooth adversary and for any adaptively chosen sequence of conformal scores s_t, MVP (Algorithm 1) produces a sequence (q_t)_{t=1}^T that is (c_exp α(·), m)-multivalid in expectation over the randomness of π_{1:T} with respect to δ and G where
+    c_exp ≤ sqrt( 4 K_ϵ |G| m ln(|G|m) ) + ρT.
+
+Remark 3.2. Since we can take r to be arbitrarily large, for any continuous distribution we can drive the ρT term to zero. Thus this bound establishes nearly statistically optimal convergence rates for constant |G| and m. Using a simpler analysis analogous to that of Gupta et al. [2022] for mean multicalibration, and an "un-normalized score function" C_{t−1}^i(x_t) = Σ_{G ∈ G(x_t)} exp(η V_t^{G,i}) − exp(−η V_t^{G,i}), it is also possible to establish (α, m)-multivalidity with α(n) = O( sqrt(T log(|G|m)) / n + ρ ), which has an optimal dependence on |G| and m, but has a bad dependence on T. We believe that our sub-optimal dependence on |G| and m is an artifact of our analysis, and not a property of our algorithm. We implement both the normalized and un-normalized version of the algorithm in our codebase, and find that both perform comparably.
+
+==================================================================== Definitions 3.2-3.3, Observation 3.2 (p. 10)
+
+Definition 3.2 (Group-bucket size). Given a transcript π_{1:t} = ((x_τ, s_τ, q_τ))_{τ=1}^t, we define the size for a group G ∈ G and a bucket i ∈ [m] at time t to be:
+    n_t^{G,i}(π_{1:t}) = ( Σ_{τ=1}^t 1[q_τ ∈ B(i), x_τ ∈ G] ).
+When the transcript is clear from context, we will sometimes write n_t^{G,i}.
+
+Similarly, for each G ∈ G, i ∈ [m] and time t ∈ [T], we can define the (un-normalized) coverage error on the sequence corresponding rounds τ ≤ t such that x_τ ∈ G and q_τ ∈ [m] [sic]:
+
+Definition 3.3. Given a transcript π_{1:t} = ((x_τ, s_τ, q_τ))_{τ=1}^t, we define the coverage error for a group G ∈ G and bucket i ∈ [m] at time t to be:
+    V_t^{G,i} = Σ_{τ=1}^t 1[x_τ ∈ G, q_τ ∈ B_m(i)] · v_δ(q_τ, s_τ)
+where v_δ(q, s) = Cover(q, s) − (1 − δ).
+
+Note that V_t^{G,i} just records the deviation of the empirical coverage from its target (1 − δ) on the subsequence of rounds τ in which x_τ ∈ G and q_t ∈ B_m(i): it takes a positive value if we have over-covered on this subsequence and a negative value if we have under-covered.
+
+Observation 3.2. Fix a transcript π_{1:T}. If for all G ∈ G and i ∈ [m], we have that
+    |V_T^{G,i}| / f(n_T^{G,i}) ≤ c
+for some constant c, then the corresponding sequence of thresholds widths (q_t)_{t=1}^T is (cα(·), m)-multivalid with respect to δ and G.
+
+==================================================================== Definition 3.4, Lemma 3.1 (p. 11)
+
+Definition 3.4 (Surrogate loss). Fix a transcript π_{1:t} ∈ Π* and a parameter η ∈ (0, 1/2). Define a surrogate coverage loss function at day t for bucket i ∈ [n] [sic] and group G ∈ G as
+    L_t^{G,i}(π_{1:t}) = ( exp(η V_t^{G,i} / f(n_s^{G,i})) + exp(−η V_t^{G,i} / f(n_s^{G,i})) )    [sic: subscript s printed]
+where V_t^{G,i} are implicitly functions of π_{1:t}. Similarly, we denote the overall surrogate coverage loss function as
+    L_t(π_{1:t}) = Σ_{G ∈ G, i ∈ [m]} L_t^{G,i}(π_{1:t}).
+
+Lemma 3.1. Fix η ∈ (0, 1/2) and a transcript π_{1:t−1} for some round t − 1. Then, for any π_t = (q_t, x_t, s_t), we have
+    L_t(π_{1:t−1} ⊕ π_t) − L_{t−1}(π_{1:t−1}) ≤ Σ_{(G,i) ∈ A_t(π_t)} η v_δ(q_t, s_t) C_{t−1}^{G,i} + (2η^2 / f(n_t^{G,i})^2) L_{t−1}^{G,i}(π_{t−1})
+where for any round t ∈ [T],
+    A_t(π_t) = {(G, i) : G ∈ G(x_t), i = B^{-1}(q_t)}
+is the set of (G, i) pairs that are "active" in round t ∈ [T] and
+    C_t^{G,i} = [ exp(η V_t^{G,i} / f(n_t^{G,i})) − exp(−η V_t^{G,i} / f(n_t^{G,i})) ] / f(n_t^{G,i}).
+
+==================================================================== Sec. 4.3.2 (p. 21), on intersecting groups
+
+[...] Define x_t = t, and let G = {G_1, ..., G_20}, where G_i is defined as the set of all t such that t ≡ 0 mod i. [...] As these sub-groups mutually intersect, it is not possible to run a separate copy of ACI on each one.
+
+==================================================================== Footnote 10 (p. 20), mapping an unbounded score into [0, 1]
+
+MVP assumes that the input scores s_t ∈ [0, 1], but in this set of experiments we can only guarantee that the normalized regression score s_t = |v_t − σ_t|/σ_t ∈ [0, ∞). Due to this, we feed MVP (and ACI, for consistency) modified scores s~_t = s_t/(1 + s_t) ∈ [0, 1]. This type of rescaling works more generally in any setting where MVP's input scores belong to [0, ∞) and need to be rescaled to be in [0, 1]: indeed, observe that the mapping x ↦ x/(1 + x) is a monotonic continuous bijection from [0, ∞) to [0, 1).
+
+==================================================================== Bucket count in the experiments
+
+Sec. 4.2.2 (p. 19): "As in all of our experiments, MVP is trained using m = 40 buckets for calibration."
+(also stated as "m = 40" in Secs. 4.1.2 p. 15, 4.1.3 p. 16, 4.2.1 p. 18 and 4.4 p. 23.) [TwinHeat] A search of the whole extracted text found no value of r, ϵ or η stated for the experiments (η appears only in Theorem 3.1 and the appendix proof). These settings are ours to choose (D9).
+
+====================================================================
+
+[TwinHeat] Reading of the [sic] places (UNSURE: the reviewer should confirm each one against the PDF):
+- "MVP(η, n, r)", "B_m(m) = [(n−1)/m, 1]", "elide the subscript n", "i ∈ [n]" (p. 6 and Def. 3.4): n is read as m, the bucket count.
+- "the bucket that w belongs to": w is read as q.
+- Def. 2.1 right-hand side α(|G_t(i)|): read as α(|G_T(i)|), matching the left-hand side.
+- Algorithm 1, C_{t−1}^i: the right-hand side uses V_t, n_t; read as V_{t−1}, n_{t−1} (the quantities computed on the two lines above it; Lemma 3.1's C_t^{G,i} has the same form with index t).
+- Def. 3.3 lead-in "q_τ ∈ [m]": read as q_τ ∈ B_m(i).
+- Def. 3.4, f(n_s^{G,i}): read as f(n_t^{G,i}).
+- P^{rn} on p. 7 is the grid written P^{rm} in Observation 3.1.
+[TwinHeat] What G6 must do with this (CLAUDE.md §18.3; settings in D9): map S to S/(1 + S) before MVP (footnote 10), feed MVP only audited steps, draw MVP's randomisation and any smoothing noise once per committed design, after commit, never in a query preview.
