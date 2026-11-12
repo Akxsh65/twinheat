@@ -1,0 +1,70 @@
+source: Angelopoulos & Bates, "A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification", arXiv 2107.07511v6 [cs.LG], 7 Dec 2022 (document dated December 8, 2022)
+location: Sec. 1 eq. (1) and the quantile (p. 4); Sec. 1.1 steps 3-4 and Theorem 1 (p. 5-6); Sec. 3.2 coverage law (p. 14); Sec. 4.5 weighted conformal under covariate shift and Theorem 3 (p. 20-21); Appendix C mean and standard deviation of the average coverage (p. 49-50); Appendix D Theorem D.1 (p. 50-51). Printed page = PDF page.
+used by: G2 StaticSplitConformal and G3 WeightedSplitConformal (CLAUDE.md §11.1, §18.2; D8); prompt M3.2. The G3 weights for P1 and the classifier ratio are TwinHeat choices (CLAUDE.md §11.1, M3.2 prompt), not from this paper.
+notation: subscripts after "_", superscripts after "^". 1{·} = indicator. ⌈·⌉ = ceiling. q^ = q̂ (printed with a hat). P_test, P are the paper's calligraphic P.
+transcribed by Claude from the PDF the team provided (text and page images given in the conversation); checked against the PDF by: (reviewer of this PR)
+
+Everything between the ==== lines is the paper's text, kept word for word. Notes marked [TwinHeat] are ours.
+
+==================================================================== Sec. 1 (p. 4)
+
+    1 − α ≤ P(Y_test ∈ C(X_test)) ≤ 1 − α + 1/(n + 1),      (1)
+
+where (X_test, Y_test) is a fresh test point from the same distribution, and α ∈ [0, 1] is a user-chosen error rate. [...] Next comes the critical step: define q^ to be the ⌈(n+1)(1−α)⌉/n empirical quantile of s_1, ..., s_n, where ⌈·⌉ is the ceiling function (q^ is essentially the 1 − α quantile, but with a small correction).
+
+Figure 2 code (p. 4):
+    q_level = np.ceil((n+1)*(1-alpha))/n
+    qhat = np.quantile(cal_scores, q_level, method='higher')
+
+==================================================================== Sec. 1.1 (p. 5-6)
+
+3. Compute q^ as the ⌈(n+1)(1−α)⌉/n quantile of the calibration scores s_1 = s(X_1, Y_1), ..., s_n = s(X_n, Y_n).
+4. Use this quantile to form the prediction sets for new examples:
+    C(X_test) = {y : s(X_test, y) ≤ q^}.      (2)
+
+Theorem 1 (Conformal coverage guarantee; Vovk, Gammerman, and Saunders [5]). Suppose (X_i, Y_i)_{i=1,...,n} and (X_test, Y_test) are i.i.d. and define q^ as in step 3 above and C(X_test) as in step 4 above. Then the following holds:
+    P(Y_test ∈ C(X_test)) ≥ 1 − α.
+
+==================================================================== Sec. 3.2 (p. 14)
+
+In particular, the distribution of coverage has an analytic form, first introduced by Vladimir Vovk in [14], namely,
+    P(Y_test ∈ C(X_test) | {(X_i, Y_i)}_{i=1}^n) ∼ Beta(n + 1 − l, l),
+where
+    l = ⌊(n + 1)α⌋.
+
+==================================================================== Sec. 4.5 (p. 20-21)
+
+To address the covariate shift from P to P_test, one can form valid prediction sets with weighted conformal prediction, first developed in [25].
+In weighted conformal prediction, we account for covariate shift by upweighting conformal scores from calibration points that would be more likely under the new distribution. We will be using the likelihood ratio
+    w(x) = dP_test(x) / dP(x);
+usually this is just the ratio of the new PDF to the old PDF at the point x. Now we define our weights,
+    p_i^w(x) = w(X_i) / ( Σ_{j=1}^n w(X_j) + w(x) )    and    p_test^w(x) = w(x) / ( Σ_{j=1}^n w(X_j) + w(x) ).
+Intuitively, the weight p_i^w(x) is large when X_i is likely under the new distribution, and p_test^w(x) is large when the input x is likely under the new distribution. We can then express our conformal quantile as the 1 − α quantile of a reweighted distribution,
+    q^(x) = inf { s_j : Σ_{i=1}^j p_i^w(x) 1{s_i ≤ s_j} ≥ 1 − α },
+where above for notational convenience we assume that the scores are ordered from smallest to largest a-priori. The choice of quantile is the key step in this algorithm, so we pause to parse it. First of all, notice that the quantile is now a function of an input x, although the dependence is only minor. Choosing p_i^w(x) = p_test^w(x) = 1/(n+1) gives the familiar case of conformal prediction—all points are equally weighted, so we end up choosing the ⌈(n + 1)(1 − α)⌉th-smallest score as our quantile. When there is covariate shift, we instead re-weight the calibration points with non-equal weights to match the test distribution. [...]
+With this quantile function in hand, we form our prediction set in the standard way,
+    C(x) = {y : s(x, y) ≤ q^(x)}.
+
+Theorem 3 (Conformal prediction under covariate shift [25]). Suppose (X_1, Y_1), ..., (X_n, Y_n) are drawn i.i.d. from P × P_{Y|X} and that (X_test, Y_test) is drawn independently from P_test × P_{Y|X}. Then the choice of C above satisfies
+    P(Y_test ∈ C(X_test)) ≥ 1 − α.
+
+([25] = R. J. Tibshirani, R. Foygel Barber, E. Candes, and A. Ramdas, "Conformal prediction under covariate shift," NeurIPS 32, 2019, pp. 2530–2540.)
+
+==================================================================== Appendix C (p. 49-50)
+
+E[C_j | {(X_i,j, Y_i,j)}_{i=1}^n] ∼ Beta(n + 1 − l, l) [...]
+    C_j ∼ (1/n_val) Binom(n_val, µ) where µ ∼ Beta(n + 1 − l, l),
+are called beta-binomial random variables. [...]
+Since C̄ is the average of R i.i.d. beta-binomial random variables, its mean and standard deviation are
+    E(C̄) = 1 − l/(n + 1)    and    sqrt(Var(C̄)) = sqrt( l(n + 1 − l)(n + n_val + 1) / (n_val R (n + 1)^2 (n + 2)) ) = O(1/sqrt(R min(n, n_val))).
+
+==================================================================== Appendix D (p. 50-51)
+
+Theorem D.1 (Conformal calibration coverage guarantee). Suppose (X_i, Y_i)_{i=1,...,n} and (X_test, Y_test) are i.i.d. Then define q^ as
+    q^ = inf { q : |{i : s(X_i, Y_i) ≤ q}| / n ≥ ⌈(n + 1)(1 − α)⌉ / n }.
+[...] we have that q^ = s_⌈(n+1)(1−α)⌉ when α ≥ 1/(n+1) and q^ = ∞ otherwise.
+
+====================================================================
+
+[TwinHeat] Reading of the Sec. 4.5 quantile when no s_j reaches 1 − α (the test point's own mass p_test^w sits above every s_j): the set is empty and its infimum is +∞, which matches Theorem D.1's q^ = ∞ in the equal-weight case. gate/baselines.py uses this reading.
+[TwinHeat] Theorem 3 is for one test point drawn i.i.d. from P_test, with the weights known. CLAUDE.md §18.2: the weights are exact only for P1, and a proposer's adaptive sequence is not covered.

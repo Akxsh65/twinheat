@@ -17,7 +17,7 @@ from collections.abc import Mapping
 
 import numpy as np
 
-__all__ = ["apply_stencil", "label_free_scale"]
+__all__ = ["apply_stencil", "hot_residual_raw", "label_free_scale"]
 
 _STENCIL = ("Ge", "Gw", "Gn", "Gs", "gup", "gdn", "diag")
 
@@ -71,3 +71,23 @@ def label_free_scale(
     r_hot = float(np.abs(r[hot]).mean())
     sd_hot = float(sd.reshape(-1)[hot].mean())
     return r_hot + lam * sd_hot + eps, r_hot, sd_hot
+
+
+def hot_residual_raw(
+    mu: np.ndarray, coeffs: Mapping[str, np.ndarray], b: np.ndarray, *, m: int,
+) -> float:
+    """DeepOHeat-v2's r_hot (Definition 5, docs/refs/deepoheat_v2_alg1.txt): mean |A μ − b| over
+    the m hottest cells of μ, in W, with no diag A scaling. Only the paper-faithful G1 variant
+    uses it (D13); every gate's main signal is label_free_scale's r_hot in K."""
+    shape = coeffs["diag"].shape
+    mu = np.asarray(mu, dtype=np.float64)
+    b = np.asarray(b, dtype=np.float64).reshape(-1)
+    if mu.shape != shape or b.size != mu.size:
+        raise ValueError(f"mu {mu.shape} and b ({b.size}) must match the stencil shape {shape}")
+    if not (isinstance(m, int) and not isinstance(m, bool) and 1 <= m <= mu.size):
+        raise ValueError(f"m must be an int in [1, {mu.size}], got {m!r}")
+    if not np.isfinite(mu).all():
+        raise ValueError("mu must be finite")
+    r = apply_stencil(coeffs, mu).reshape(-1) - b
+    hot = np.argsort(-mu.reshape(-1), kind="stable")[:m]
+    return float(np.abs(r[hot]).mean())

@@ -5,6 +5,8 @@ updates:
   decide(GateInput) -> GateDecision    pure: never changes gate state (a `query` preview calls it
                                        freely, B8). The decision is accept or flag; it carries the
                                        audit probability p_t but never the coin.
+  commit(GateInput) -> GateDecision    the binding decision, once per committed design; may
+                                       change label-free state only (default: decide()).
   update(list[AuditRecord]) -> list[AuditOutcome]
                                        audited designs only; the gate checks each claim against
                                        its AuditCoin and refuses the whole batch on any bad record.
@@ -63,6 +65,9 @@ class GateInput:
     proposer: str  # P1..P4
     aggressiveness: int | None  # 1..3, None for P4
     group: str | None  # label-free group (G6); None for single-threshold gates
+    # mean |A μ − b| over the hottest cells in W, without the diag A scaling; only the
+    # paper-faithful G1 variant reads it (D13, gate/scale.hot_residual_raw)
+    r_hot_raw: float | None = None
 
     def __post_init__(self) -> None:
         if not (isinstance(self.design_id, str) and self.design_id):
@@ -71,6 +76,8 @@ class GateInput:
         _finite("s", self.s, positive=True)
         _finite("r_hot", self.r_hot, nonneg=True)
         _finite("sd_hot", self.sd_hot, nonneg=True)
+        if self.r_hot_raw is not None:
+            _finite("r_hot_raw", self.r_hot_raw, nonneg=True)
         if self.proposer not in PROPOSERS:
             raise ValueError(f"proposer must be one of {PROPOSERS}, got {self.proposer!r}")
 
@@ -123,6 +130,14 @@ class BaseGate(abc.ABC):
 
     @abc.abstractmethod
     def decide(self, inp: GateInput) -> GateDecision: ...
+
+    def commit(self, inp: GateInput) -> GateDecision:
+        """The binding decision for a committed design; the server calls it once per design,
+        after coin.commit(design_id) and before drawing the coin. Gates with label-free
+        per-design state override it (G1 pushes r_hot into its window, G4 records what it
+        flagged, G6 draws MVP's randomisation, G7 fixes p_t). It never sees a label or a coin
+        value. Default: the same decision as decide(), with no state change."""
+        return self.decide(inp)
 
     @abc.abstractmethod
     def update(self, records: list[AuditRecord]) -> list[AuditOutcome]: ...
