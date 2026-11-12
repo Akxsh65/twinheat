@@ -1,6 +1,6 @@
 # Dataset verification (N2.2): PASS
 
-Root `../dataset_v1` · dataset hash `71ced3c76631d65f8438eb67376b7d0da1a1680f96c4527d6bbe0e8c4c988815`
+Root `/media/rvcse22/CSERV/twinheat/dataset_v1` · dataset hash `89ff7cace329e1b982c33f3eb633dbc53242266eaeea9b2a1e4acc251829e5c7`
 
 Checks: file hashes and counts; provenance; record hashes and cross-split duplicates; re-solve of 1% of each split (at least one board) with PyAMG-GMRES to 1e-10 (limit 0.002 of max θ); statistics (mean φ rasterised at N = 64).
 
@@ -14,6 +14,7 @@ Checks: file hashes and counts; provenance; record hashes and cross-split duplic
 | ood_4 | 500 | 1 | da2c2b6 | 0.4% | 2.6 / 19.6 / 65.5 | 5 | 4.03e-04 | 0.182 / 0.939 / 1.000 / 0.166 | 1: 148, 2: 123, 3: 112, 4: 117 |
 | ood_6 | 500 | 1 | da2c2b6 | 0.4% | 2.4 / 13.5 / 47.4 | 5 | 4.73e-04 | 0.198 / 0.938 / 1.000 / 0.177 | 1: 124, 2: 116, 3: 120, 4: 140 |
 | ood_7 | 500 | 1 | da2c2b6 | 7.0% | 3.9 / 29.4 / 100.0 | 5 | 4.78e-04 | 0.199 / 0.931 / 1.000 / 0.174 | 1: 124, 2: 119, 3: 135, 4: 122 |
+| ood_bottom_chips | 500 | 1 | 23ff3f3 | 0.4% | 2.4 / 20.5 / 62.0 | 5 | 4.39e-04 | 0.197 / 0.937 / 1.000 / 0.173 | 1: 122, 2: 129, 3: 118, 4: 131 |
 | ood_dense_vias | 500 | 1 | da2c2b6 | 0.6% | 2.9 / 19.7 / 62.1 | 5 | 4.24e-04 | 0.199 / 0.931 / 1.000 / 0.166 | 1: 126, 2: 140, 3: 118, 4: 116 |
 | test | 1000 | 2 | da2c2b6 | 0.5% | 2.2 / 20.7 / 65.9 | 10 | 4.19e-04 | 0.194 / 0.936 / 1.000 / 0.173 | 1: 283, 2: 238, 3: 235, 4: 244 |
 | train | 6000 | 12 | da2c2b6 | 0.4% | 4.4 / 44.0 / 61.8 | 60 | 4.76e-04 | 0.226 / 0.968 / 1.000 / 0.184 | 1: 758, 2: 788, 3: 721, 4: 3733 |
@@ -33,4 +34,4 @@ None.
 
 ---
 
-verifier commit a793051 · dataset 71ced3c76631d65f · seed 0 · Linux-6.8.0-138-generic-x86_64-with-glibc2.35 x86_64 · 2026-11-09
+verifier commit 23ff3f3 · dataset 89ff7cace329e1b9 · seed 0 · Linux-6.8.0-138-generic-x86_64-with-glibc2.35 x86_64 · 2026-11-12
