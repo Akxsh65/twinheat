@@ -24,9 +24,8 @@ area fraction over the *sampled* footprint, so Σ (q + q_bot)·Δx² equals the 
 Via density (arrays + background) is the same on all three gaps (through-hole vias). The forced
 zone sets h_top inside it, by area fraction.
 
-q_bot is proposed in docs/decisions.md ("OOD sets v2", point 2) and needs N: until
-solvers/fvm.py reads it, the solver silently ignores bottom-chip heat (tests/test_raster.py has a
-strict xfail that flips when it does). Do not generate ood_bottom_chips data before then.
+q_bot is proposed in docs/decisions.md ("OOD sets v2", point 2). solvers/fvm.py reads it (PR #20)
+and data/generate.py generates ood_bottom_chips with it.
 """
 
 from __future__ import annotations
