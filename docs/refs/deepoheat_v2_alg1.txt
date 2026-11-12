@@ -1,0 +1,99 @@
+source: Yu, Li, Liu, Ai, Zeng, Li & Zhang, "DeepOHeat-v2: Self-Improving Operator Learning for Fast and Trustworthy Thermal Optimization in 3D-IC Design", arXiv 2608.16080v1 [cs.LG], 17 Aug 2026
+location: Sec. IV-A last paragraphs (p. 6); Sec. IV-B opening, Definition 5, "Adaptive sliding-window flagging" (p. 6-7); Sec. IV-C (p. 7); Sec. IV-D with Algorithm 1 (p. 7); Table III and the SA schedule, eq. (26) (p. 8). Printed page = PDF page.
+used by: G1 baseline (CLAUDE.md §11.1, §18.4; open points in D13); prompt M3.2
+notation: the paper puts a hat on the surrogate prediction and on the peak estimate. Here T^ = predicted field (hat), T = refined field (no hat), p^ = peak estimate. Bold vectors are written plainly. A_h^-1 = inverse of A_h. Subscripts after "_", superscripts after "^".
+transcribed by Claude from the PDF the team provided: text extracted with pdftotext, every formula and symbol checked against the rendered page images; checked against the PDF by: (reviewer of this PR)
+
+Everything between the ==== lines is the paper's text, kept word for word. Only the notation above is changed. Notes marked [TwinHeat] are ours and are not in the paper.
+
+==================================================================== Sec. IV-A (p. 6), last two paragraphs
+
+In-trajectory model selection: An incremental event can overfit the buffer or step into a worse minimum, so we keep its update only if it lowers error on held-out trajectory data. At the start of an event the buffer D_online is split chronologically: the most recent samples form a held-out validation slice D^val_online and the older remainder is used for training. After the event's gradient steps we form three candidates, the pre-update model, the updated model, and their weight average [29],
+
+    G_θpre,   G_θpost,   G_θavg = G_{(θpre + θpost)/2},      (23)
+
+score each by the mean absolute peak temperature error on D^val_online, and deploy the argmin. Because G_θpre is a candidate, the deployed model is never worse than the pre-event one on D^val_online; when the selection keeps G_θpre, the optimizer state is also reverted to its pre-event snapshot so no rejected gradient leaks forward. The averaged candidate G_θavg offers a midpoint that sometimes generalizes better than either endpoint, at the cost of one more validation pass.
+
+A fixed number of adaptation events: Refinement and incremental training run for a fixed number of events C. After the Cth event the surrogate has adapted to the trajectory distribution, so every later proposal is decided on the surrogate alone, with no further solver calls or retraining. The limit is needed because the trust gate (Section IV-B) flags a fixed fraction of proposals by design; without the limit, refinement would continue indefinitely even after the surrogate is accurate.
+
+==================================================================== Sec. IV-B (p. 6), opening paragraph
+
+B. When to Call the Non-AI Solver: The Hotspot Trust Gate
+The surrogate is accurate on most placements; the gate must find the few with large peak temperature error. Catching them takes a signal that ranks predictions by peak error, which the v1 global residual cannot do, and a threshold that follows the residual scale as it drifts with the search and with each retraining. The hotspot-localized residual r_hot supplies the ranking; a sliding-window percentile sets the threshold.
+
+==================================================================== Definition 5 and following (p. 7)
+
+Definition 5 (Hotspot-localized residual). For a prediction T^ with residual r := A_h T^ − b_h, let S_m index the top-m hottest cells of T^, for a fixed count m (Table III). Define
+
+    r_hot(T^) := (1/m) Σ_{y ∈ S_m} |r(y)|,      (25)
+
+the mean residual magnitude over the predicted hotspot.
+
+Computing r_hot costs one sparse matrix–vector product, against the same b_h the surrogate is trained on. Restricting the residual to the hotspot gives a matching a-posteriori bound (Appendix B) in which the global norm ‖A_h^-1‖_2 of (24) is replaced by the local diagonal entry (A_h^-1)_{x*,x*}, which does not grow with κ_2(A_h). Like the v1 bound it is numerically loose, so r_hot ranks predictions rather than certifying any one of them. Averaging over the top-m cells, instead of the single hottest, keeps the ranking stable when the predicted and true hotspots are close but not identical.
+
+Adaptive sliding-window flagging: The scale of r_hot is not stationary: it shrinks as the search narrows and shifts again each time the surrogate is updated, so a fixed threshold calibrated once on D_train would soon flag too many or too few proposals. We instead set the threshold relative to the residuals currently observed, maintaining a first-in-first-out (FIFO) window W of the most recent r_hot values and, while the solver is active, taking the threshold at search step t to be the (1 − f_target)-percentile of W. This makes the threshold self-calibrating: it tracks the moving r_hot distribution and holds the flag rate near f_target regardless of search progress or model updates. The window is bootstrapped by an initial block of no-flag search steps so the threshold is well-defined once flagging begins.
+
+==================================================================== Sec. IV-C (p. 7)
+
+C. How to Call the Non-AI Solver: Warm-Started GMRES Refinement
+When a proposal is flagged, we want a peak estimate more accurate than the surrogate but far cheaper than a cold solve. We run the inherited GMRES refinement (Section II-B) on A_h T = b_h from the warm start T_0 = T^, with a Ruge–Stüben algebraic-multigrid (AMG) V-cycle preconditioner [39], [40]. Because the warm prediction is already within a few K of the true field, the refinement need not drive the residual far down, so we set a deliberately loose relative tolerance ϵ. In practice this tolerance is met after a single V-cycle, which propagates information across all spatial scales and roughly halves the warm-start residual. The cost is ∼ 1 s per refinement versus ∼ 16 s for a tight solve (a ∼ 15× saving), and the post-cycle peak temperature error is typically reduced by 1–2 K, enough to flip a borderline accept/reject decision before it is committed. Each refined placement and its solved field (u′, T) are then added to the online buffer D_online, the labeled in-trajectory data on which the surrogate is incrementally retrained (Section IV-A).
+
+==================================================================== Algorithm 1 (p. 7)
+
+Algorithm 1 DeepOHeat-v2 (one optimization run): decision logic.
+Require: Pretrained G_θ; train set D_train; acceptance schedule (τ_0, τ_min, N); flag rate f_target; window |W|; refine tolerance ϵ; event trigger ΔN; event budget C.
+ 1: D_online ← ∅; u^0 ∼ U_init; W ← ∅; event count e ← 0.
+ 2: Bootstrap W with |W| no-flag search steps.
+ 3: for t = 1, ..., N do
+ 4:   u′ ← perturb(u^{t−1});  T^ ← G_θ(u′);  p^ ← ‖T^‖_∞.
+ 5:   if e < C then                                        ▷ solver still active
+ 6:     Push r_hot(T^) into W.
+ 7:     if r_hot(T^) > Q_{1−f_target}(W) then             ▷ flag at window percentile
+ 8:       T ← AMG-GMRES(A_h, b_h, T_0 = T^, ϵ).
+ 9:       p^ ← ‖T‖_∞;  D_online ← D_online ∪ {(u′, T)}.
+10:       if |D_online| ≥ (e+1) ΔN then                    ▷ event
+11:         θ_pre ← θ; incrementally train θ_post on L_inc.
+12:         θ_avg ← ½ (θ_pre + θ_post).
+13:         θ ← argmin_s |ΔT_peak|(G_θs, D^val_online), s ∈ {pre, post, avg}.
+14:         e ← e + 1.
+15:       end if
+16:     end if
+17:   end if
+18:   Accept u′ w.p. min(1, exp(−(p^ − p^^{t−1})/τ_t)).
+19: end for
+20: Final tight FVM verify on the best-so-far placement.
+
+(text after the algorithm, p. 7) The run proceeds in two phases: while e < C, every proposal passes through the gate, and a flagged proposal is refined, buffered, and, once the buffer crosses the next event threshold, drives an incremental-training event with model selection; once e reaches C, this block is skipped and the search continues on the adapted surrogate alone. The peak estimate p^ in the accept/reject test holds the surrogate's predicted peak by default and the refined peak whenever the proposal was refined. A single tight FVM solve at the end verifies the best-so-far placement and returns the peak temperature the run reports.
+
+==================================================================== Table III (p. 8)
+
+TABLE III. DEEPOHEAT-V2 SELF-IMPROVING-LOOP HYPERPARAMETERS, FIXED ACROSS ALL RUNS.
+Quantity                                   Value
+Trust-window length (|W|)                  100
+Hotspot cells (m)                          100
+Target flag rate (f_target)                0.30
+Refinement rel. tolerance (ϵ)              5 × 10^-1
+Loss weights (λ_e, λ_d)                    0.1, 1
+Incremental LRs (η_muon, η_adam)           5 × 10^-6, 1 × 10^-6
+Batch size (per stream)                    4
+Gradient steps per event                   1000
+Refinements per event (ΔN)                 50
+Event budget (C)                           3
+Validation-slice size                      10
+
+==================================================================== Simulated-annealing schedule (p. 8)
+
+Simulated-annealing schedule: All optimization runs use the same SA loop [41]: from a random non-overlapping placement, each of N = 1000 iterations perturbs one block by at most Δ_max = 10 grid steps and accepts the move with the Metropolis criterion at an acceptance temperature τ_t that is geometrically cooled,
+
+    τ_t = τ_0 (τ_min/τ_0)^{t/N},      τ_0 = 5,  τ_min = 0.01.      (26)
+
+The cost is T_peak(u), so each iteration requires one thermal evaluation.
+
+====================================================================
+
+[TwinHeat] Where TwinHeat's G1 may differ from the text above (decided in D13, docs/decisions.md; CLAUDE.md §18.4):
+- residual: the paper uses raw r = A_h T^ − b_h (units W); TwinHeat's shared scale divides by diag A (units K, §8.1).
+- m: the paper uses m = 100; TwinHeat uses the m shared by all gates (default 64, §8.1).
+- f_target: the paper fixes 0.30; TwinHeat tunes f to the exact-solve budget (§11.1).
+- the C rule: the paper stops gating after C = 3 retraining events (lines 5 and 17); whether G1 copies this is part of D13.
+- line 2 (bootstrap with |W| no-flag steps) and line 6 (push r_hot for every proposal while e < C, flagged or not) are the paper's behaviour; G1 tests should check both.
