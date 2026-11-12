@@ -1,23 +1,29 @@
-# GPU runs to do (Kaggle T4 and the lab GPU machine)
+# GPU runs to do (the college A100 server, rvcse)
 
 Runs that need a real CUDA GPU, or that must happen on the lab machine where the data lives.
 Everything else runs on a laptop. Paste each "Send back" item into the PR named in its section,
-then tick the box. Updated 2026-11-06 (end of week 3).
+then tick the box. Updated 2026-11-12 (week 4).
 
 Machines:
-- **rvcse** (lab GPU machine, oracle machine of record): Intel Xeon Gold 6226R (64 logical),
-  NVIDIA A100-PCIE-40GB. Holds dataset v1. Setup: section 0L.
-- **Kaggle** (2×T4): section 0K.
+- **rvcse** (`rvcecsegpuserver`, college GPU server; the machine of record for every GPU run and
+  for oracle solves): Intel Xeon Gold 6226R (64 logical), NVIDIA A100-PCIE-40GB (used as GPU 0
+  and GPU 2 with `CUDA_DEVICE_ORDER=PCI_BUS_ID`). Holds dataset v1. Setup: section 0L.
+- **Kaggle** (2×T4): fallback only, if rvcse is unavailable. Section 0K. No run is planned there
+  (docs/decisions.md, "GPU runs on the college A100").
 
 ## Open
 
 | # | Prompt | Where | Needs first | Needed by | Status |
 |---|---|---|---|---|---|
-| 4 | N1.4 stencil bandwidth table (`stencil_bw.csv`) | Kaggle T4 (see note) | nothing | overdue (gate G1) | [ ] |
-| 5 | N2.2 verification of the full dataset + report; then release | rvcse | nothing | week 4 (tag `v2-data`) | [ ] |
-| 6 | N2.1 `ood_bottom_chips` split (500 boards) | rvcse | the small generate.py fix (below) | week 4 | [ ] |
-| 7 | M1.3 FNO on PDEBench Darcy | rvcse or Kaggle T4 | `docs/refs/pdebench_darcy_fno.txt` + the HDF5 file | before M2.2 | [ ] |
-| 8 | M2.2 ensemble training (5 members) | rvcse + Kaggle | M2.1 code, section 7 passed | week 5 (accuracy go/no-go) | [ ] |
+| 4 | N1.4 stencil bandwidth table (`stencil_bw.csv`) | rvcse A100 | the A100 datasheet peak bandwidth in `docs/refs/` | overdue (gate G1) | [ ] |
+| 9 | M2.3 U-Net and FNO+local baselines | rvcse GPU 0 / GPU 2 | nothing (running overnight from 2026-11-12) | week 5 | [ ] |
+| 10 | M2.3 E5 accuracy and the week-5 go/no-go | rvcse | the two baselines committed; `git pull` (e5.yaml lists `ood_bottom_chips`) | week 5 | [ ] |
+| 11 | `scripts/check_gpu.py` on the A100, output into `docs/compute.md` | rvcse | nothing | any time | [ ] |
+
+For 10: `python -m experiments.e5_accuracy --config experiments/configs/e5.yaml --data <dataset_v1>`
+on a clean tree. Every ensemble member's val relative L2 is above the 3 % target of CLAUDE.md §12
+(hotspot error is below 1.5 K): docs/decisions.md, "M2.2 members 2-5", decision pending. E5's
+`go_no_go.md` is where that decision is made.
 
 ## Done
 
@@ -26,7 +32,13 @@ Machines:
 | 1 | N1.4 GPU tests | ran on the A100 (rvcse); two kernel fixes for a real-GPU compile merged (9434ef0, 7ad689a). Bandwidth table still open: section 4 |
 | 2 | N1.5 T4 rows | not needed (section A measured the oracle machine itself) |
 | A | N1.5 solver table on the oracle machine | `bench/results/solver_table_v1.csv` + `bench/figs/solver_table_v1.png` (c4f7b6f); D5: keep 256² × 4 (docs/decisions.md) |
-| 3 | N2.1 pilot, then dataset v1 | pilot (seed 0, commit 743c726) reviewed by M and N; all 12 splits generated with seed 2026 and hash-verified (docs/decisions.md, "Dataset v1") |
+| 3 | N2.1 pilot, then dataset v1 | pilot (seed 0, commit 743c726) reviewed by M and N; all splits generated with seed 2026 and hash-verified (docs/decisions.md, "Dataset v1") |
+| 5 | N2.2 verification of the full dataset | `data/verify_report.md`: PASS, 13 splits, 0 problems (#29, #38); tag `v2-data` |
+| 6 | N2.1 `ood_bottom_chips` split | generated at 23ff3f3 on rvcse GPU 2 (#37) |
+| 7 | M1.3 FNO on PDEBench Darcy | results and acceptance in docs/decisions.md (#33) |
+| 8 | M2.2 ensemble (5 members) | registry entries, summaries, logs (#34, #35) |
+
+Sections 5–8 below are kept as the record of how those runs were done.
 
 Note on A: the CSV rows carry commit `7ad689a-dirty`. CLAUDE.md §0 rule 11 wants report numbers
 from a script run on a tagged commit; if the solver table goes into the report, re-run it on
@@ -34,7 +46,7 @@ from a script run on a tagged commit; if the solver table goes into the report, 
 
 ---
 
-## 0K · Kaggle session setup
+## 0K · Kaggle session setup (fallback only)
 
 1. Kaggle → New Notebook → Settings: **Accelerator: GPU T4 x2**, **Internet: on**.
 2. If the repo is private: Add-ons → Secrets → add `GITHUB_TOKEN` (fine-grained, read access to
@@ -77,18 +89,16 @@ git status --short                           # must be empty for anything that g
 
 ## 4 · N1.4 · stencil bandwidth table
 
-About 5 minutes. `REF = "main"`. The N1.4 DONE WHEN asks for achieved GB/s of the naive and
-tiled stencils "vs ~320 GB/s peak", which is the **T4's** nominal figure, and `bench/stencil_bw.py`
-hard-codes that 320. So run it on a Kaggle T4:
+About 5 minutes on rvcse (section 0L), `REF = "main"`, clean tree. The peak bandwidth is a
+required argument with its source (the script has no built-in GPU number):
 
 ```
-!python -m pytest tests/test_gpu_solvers.py -q -rs 2>&1 | tail -3
-!python -m bench.stencil_bw 2>&1 | tee n14_bw_log.txt
+python -m pytest tests/test_gpu_solvers.py -q -rs 2>&1 | tail -3
+python -m bench.stencil_bw --peak-gbs <A100 peak from docs/refs>     --peak-source "docs/refs/<A100 datasheet file>" 2>&1 | tee n14_bw_log.txt
 ```
 
-If you would rather run it on the A100, the `peak_GBs_nominal` and `pct_of_peak` columns will be
-wrong: tell me the A100's peak bandwidth from its datasheet and I will make the peak a parameter
-(not a number I fill in from memory).
+Use the value and file name recorded in `docs/refs/` (the A100 PCIe 40 GB datasheet line); never
+a number from memory. Run on one GPU (`CUDA_VISIBLE_DEVICES=0`), with nothing else on it.
 
 **Send back:** `bench/results/stencil_bw.csv`, `n14_bw_log.txt`, and the `pytest` summary line.
 

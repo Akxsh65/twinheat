@@ -13,5 +13,5 @@ lint:
 	python -m ruff check .
 
 gpu-test:
-	@echo "Run on Kaggle (GPU session), then paste the log into the PR:"
+	@echo "Run on the rvcse A100 (gpu_instructions.md, section 0L), then paste the log into the PR:"
 	@echo '  python -m pytest -m gpu -q'

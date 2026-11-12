@@ -22,7 +22,7 @@ make lint                                   # ruff
 | `make test` | fast tests (what CI runs on every push) |
 | `make test-slow` | slow tests (CI runs these nightly) |
 | `make lint` | `ruff check .` |
-| `make gpu-test` | prints how to run the GPU tests on Kaggle (paste the log into the PR) |
+| `make gpu-test` | prints how to run the GPU tests on the rvcse A100 (paste the log into the PR) |
 
 ## Layout
 

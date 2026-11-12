@@ -1,6 +1,18 @@
 # Compute
 
-## Kaggle quotas
+## rvcse: college GPU server (`rvcecsegpuserver`), machine of record
+
+Every GPU run and every oracle solve happens here (docs/decisions.md, "GPU runs on the college
+A100"); it also holds dataset v1 (copy on Drive). Known from runs so far:
+
+| Item | Value |
+|---|---|
+| GPUs | NVIDIA A100-PCIE-40GB, used as GPU 0 and GPU 2 (`CUDA_DEVICE_ORDER=PCI_BUS_ID`) |
+| CPU | Intel Xeon Gold 6226R, 64 logical cores (N1.5 timings use 1 thread) |
+| `scripts/check_gpu.py` output | to fill in (gpu_instructions.md, item 11) |
+| Peak memory bandwidth (for N1.4) | from the A100 datasheet, kept in `docs/refs/`; not written here from memory |
+
+## Kaggle (fallback only; measured 2026-10-23)
 
 Measured with `scripts/check_gpu.py` (2026-10-23), session "GPU T4 x2":
 
