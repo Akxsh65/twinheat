@@ -204,3 +204,14 @@ ft256 runs were disk-bound, so wall-clock gpu_hours are not comparable with memb
 Open item (M): every member's best val rel. L2 is above the week-5 target of CLAUDE.md 12 (3 %);
 val hotspot error is below 1.5 K for all five. Summaries: experiments/results/ensemble/.
 Decision pending.
+
+## Storage of data and checkpoints: no Kaggle Datasets, 2026-11-12
+All GPU work so far (dataset v1, verification, norm stats, M1.3, the five ensemble members) ran on
+the lab GPU server rvcse, and the remaining data-reading GPU work (E5, gate experiments, E9, N6.1)
+can run there too: rvcse has two A100s, enough for N5.3's two-GPU DDP run. A Kaggle Dataset copy
+is therefore not needed. Changed CLAUDE.md 4 ("Large files"), the plan's Backups line, N2.2
+checklist and N6.1 fetch locations, and gpu_instructions.md N2.2 release steps: data and
+checkpoints live on rvcse with an off-server copy on Drive, hashes in data/manifest.json and
+models/registry.json as before. The Drive copy stays required (rvcse is shared and is the only
+copy). Unchanged: Kaggle T4 runs that need no dataset (N1.4 bandwidth table, @gpu tests) and
+notebooks/train_member.ipynb (kept as a fallback template). Needs review by N and M.

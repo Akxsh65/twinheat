@@ -111,12 +111,12 @@ DONE WHEN (N2.2): exit status 0, and `data/verify_report.md` + `data/figs/verify
 committed (they are written in the repo; open a PR with them).
 
 Then the release steps from the plan's N2.2 checklist:
-1. Upload the dataset folder as Kaggle Dataset v1, and copy it to Drive.
-2. Check the uploaded and copied hashes match `manifest.json` (`python -m data.verify_dataset
+1. Copy the dataset folder to Drive (no Kaggle Dataset: decisions.md, 2026-11-12).
+2. Check the copied hashes match `manifest.json` (`python -m data.verify_dataset
    --root <the copy>` on the copy).
 3. Tag the commit `v2-data` (CLAUDE.md §4).
 
-**Send back:** `n22_verify_log.txt`, the PR with the report and figures, the Kaggle Dataset name.
+**Send back:** `n22_verify_log.txt`, the PR with the report and figures, the Drive folder name.
 
 **If it fails:** the report lists every failure. A re-solve outside 2e-3 or a cross-split duplicate
 is a real problem: do not release; send the report. Never edit released shards (CLAUDE.md §5); a

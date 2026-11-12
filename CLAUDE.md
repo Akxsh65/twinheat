@@ -97,7 +97,7 @@ twinheat/
 - **Compute**: Kaggle 2×T4 (about 30 GPU-h per account per week; check), Colab, laptop GPU, and a multi-core lab CPU for PyAMG and oracle solves. Real quotas are in `docs/compute.md`.
 - **pytest markers**: `slow`, `gpu`. CI runs `pytest -m "not slow and not gpu"` + `ruff` on every push, and slow tests nightly. GPU tests are run by hand on Kaggle and their log is pasted into the PR.
 - **Git**: `main` always green. Branches `n/<task>`, `m/<task>`, `g/<task>`. PRs need CI + one reviewer, and the reviewer runs tests locally for `solvers/ certify/ gate/`. Tags: `v0-contracts` (wk 1), `v1-solver` (wk 3), `v2-data` (wk 5), `v3-freeze` (wk 10), `v1.0-release` (wk 11).
-- **Large files** never go in git. Data and checkpoints live on Kaggle Datasets + Drive, with hashes in `data/manifest.json` and `models/registry.json`.
+- **Large files** never go in git. Data and checkpoints live on the lab GPU server (rvcse) with an off-server copy on Drive, with hashes in `data/manifest.json` and `models/registry.json`.
 - **Figures**: every figure script writes a footer: git commit, dataset hash, seed, hardware, date. No footer, no figure.
 - **Experiments**: configs in `experiments/configs/`. Hyperparameters for reported runs come only from `frozen.yaml`, committed before the runs. A run id is `<config>-<commit>-<seed>`. 5 seeds for every gate experiment.
 - **Code style**: type hints; docstrings state units; vectorised numpy (no Python loops over cells); deterministic seeds (`numpy.random.Generator(PCG64)`, torch seeds, Philox on device).

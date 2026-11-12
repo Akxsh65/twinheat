@@ -68,7 +68,7 @@ REPORT BACK     – changed-file tree, test summary, 3 ways it could still be wr
 
 B1 M-matrix · B2 solver correctness (MMS slope 2, energy ≤ 0.1 %) · B3 solver agreement · B4 linearity · B5 symmetry · B6 contract validation · **B7 certificate is a true upper bound: any violation blocks results** · **B8 gate isolation (only audits move q; coin after commit; `query` never touches the gate)**.
 Data hygiene: hashed shards, locked calibration split, train-only normalisation, never edit a released split.
-Backups: code on GitHub + local clones; data on a Kaggle Dataset + Drive; checkpoints every epoch to Drive; oracle labels and audit logs on Drive + an external disk; hardware frames to Drive the same day; report on Overleaf with git sync.
+Backups: code on GitHub + local clones; data on the lab GPU server (rvcse) + Drive; checkpoints every epoch to Drive; oracle labels and audit logs on Drive + an external disk; hardware frames to Drive the same day; report on Overleaf with git sync.
 Reproducibility: figure footers, frozen configs, 5 seeds, decision log.
 
 ---
@@ -695,7 +695,7 @@ REPORT BACK: file and the report.
 - [ ] All splits complete; `verify_dataset.py` exits 0
 - [ ] Rescale fraction ≤ 20 % (else lower power, regenerate)
 - [ ] Throughput logged for the PAGP chapter
-- [ ] Kaggle Dataset v1 + Drive copy; hashes match; tag `v2-data`
+- [ ] Drive copy of dataset v1; hashes match; tag `v2-data`
 
 **If it goes wrong**
 - Energy-balance raise → reproduce that seed alone, check PCG reached 1e-10 (raise maxit), check for a degenerate board. Fix the cause, then resume. Never skip boards silently.
@@ -1555,7 +1555,7 @@ READ FIRST: CLAUDE.md §4 (figures, frozen configs, tags), §11.5 (E1–E18), §
 bench/*, data/manifest.json, models/registry.json.
 GOAL: One command reproduces every result from tag v3-freeze on a clean machine and flags any drift.
 DELIVERABLES: Makefile targets e1 … e18 and all-experiments; scripts/run_all.sh; scripts/fetch_artifacts.py (downloads data +
-checkpoints by hash from {{RUNTIME: Kaggle dataset / Drive locations}}, fails on mismatch); scripts/compare.py.
+checkpoints by hash from {{RUNTIME: rvcse / Drive locations}}, fails on mismatch); scripts/compare.py.
 SPEC: create the env from environment.yml (or requirements.txt on Kaggle); verify_env.py; each target independent and resumable,
 printing an estimated wall time up front; frozen configs only; 5 seeds; CSVs to results/<exp>/; figures with footers;
 compare.py flags every metric outside the 95 % CI stored in results_reference/ and prints a pass/fail table.
