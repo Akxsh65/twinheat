@@ -65,9 +65,30 @@ def test_train_alternates_design_and_id_other_splits_are_one_mode():
         gen.board_mode("bad", 0)
 
 
-def test_bottom_chip_boards_are_refused_until_the_solver_reads_q_bot(tmp_path):
-    with pytest.raises(gen.GenerateError, match="q_bot"):
-        gen.generate("ood_bottom_chips", 4, 0, tmp_path, **KW)
+def test_bottom_chip_split_is_generated_with_the_heat_on_l4(tmp_path):
+    """ood_bottom_chips (solvers/fvm.py reads q_bot since PR #20): every chip is on the bottom,
+    each board passes the energy check, the stored field is the direct solution of its record
+    (so the batched PCG right-hand side carries q_bot), and L4 is hotter than L1."""
+    from data.raster import rasterise
+    from solvers.fvm import assemble_board, solve_direct
+    assert gen.board_mode("ood_bottom_chips", 0) == "ood_bottom_chips"
+    gen.generate("ood_bottom_chips", 4, 0, tmp_path, **{**KW, "shard_size": 4})
+    man = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert man["complete"] and man["split"] == "ood_bottom_chips" and man["count"] == 4
+    d = tmp_path / "shard_0000"
+    fields = np.load(d / "fields.npy").astype(np.float64)
+    for j, line in enumerate((d / "records.jsonl").read_text(encoding="utf-8").splitlines()):
+        row = json.loads(line)
+        rec = row["record"]
+        assert rec["mode"] == "ood_bottom_chips" and rec["chips"]
+        assert all(c["side"] == "bottom" for c in rec["chips"])
+        assert row["energy_balance"] <= gen.ENERGY_TOL
+        r = rasterise(rec, gen.SPEC, N)
+        assert r.q_bot.any() and not r.q.any()
+        A, b = assemble_board(gen.SPEC, r, rec["dirichlet_edges"])
+        theta = solve_direct(A, b).reshape(4, N, N)
+        np.testing.assert_allclose(fields[j], theta, rtol=2.0**-10, atol=1e-6)  # float16
+        assert fields[j][3].max() > fields[j][0].max()
 
 
 # ---------------------------------------------------------------------------- output

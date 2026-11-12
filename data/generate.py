@@ -24,10 +24,10 @@ solved in batches that never cross a shard boundary, so a resumed shard repeats 
 arithmetic as an uninterrupted run (byte-identical on the same device and commit).
 
 Data hygiene (CLAUDE.md §5): a dirty git tree is refused unless --allow-dirty (released splits
-are generated from a committed tree). ood_bottom_chips is refused: data/raster.py puts bottom-chip
-heat in q_bot, which solvers/fvm.py does not read yet. If more than 20 % of boards were rescaled,
-§6.5 says to lower the power range instead: the run finishes, the manifest flags it and the
-CLI exits with status 2.
+are generated from a committed tree). ood_bottom_chips boards put their heat in q_bot on L4
+(data/raster.py), which solvers/fvm.py assembles into A, b and the GPU rhs. If more than 20 % of
+boards were rescaled, §6.5 says to lower the power range instead: the run finishes, the manifest
+flags it and the CLI exits with status 2.
 """
 
 from __future__ import annotations
@@ -65,8 +65,6 @@ TOL = _S1.discretisation.rel_residual_tol.value  # 1e-10, CLAUDE.md §6.4
 ENERGY_TOL = _S1.discretisation.energy_balance_tol.value  # 1e-3, CLAUDE.md §6.4
 RESCALE_LIMIT = 0.20  # CLAUDE.md §6.5: above 20 % rescaled, lower the power range instead
 SPLITS = ("train", "val", "cal", "test")
-UNSUPPORTED = {"ood_bottom_chips": "data/raster.py puts bottom-chip heat in q_bot, which "
-                                   "solvers/fvm.py does not read yet (docs/decisions.md, OOD v2)"}
 SPEC_FILES = ("config/spec_v1.yaml", "config/spec_v2.yaml", "config/design_task.yaml")
 MANIFEST = "manifest.json"
 SCHEMA = "twinheat-dataset-manifest/1"
@@ -94,8 +92,6 @@ def board_mode(split: str, i: int) -> str:
     if split in SPLITS:
         return "id"
     if split.startswith("ood_"):
-        if split in UNSUPPORTED:
-            raise GenerateError(f"split {split} is not generated: {UNSUPPORTED[split]}")
         if split not in OOD_MODES:
             raise GenerateError(f"unknown OOD split {split!r}; spec_v2 ood.names: {OOD_MODES}")
         return split

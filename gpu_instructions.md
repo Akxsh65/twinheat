@@ -126,9 +126,8 @@ fix is a new version `v2.1-data`.
 
 ## 6 · N2.1 · the `ood_bottom_chips` split
 
-Needs a small code change first: PR #20 made `solvers/fvm.py` read `q_bot`, but
-`data/generate.py` still refuses `ood_bottom_chips` (and `tests/test_generate.py` tests that
-refusal). Ask Claude for that fix; merge it; then, on rvcse with `REF = "main"`:
+`data/generate.py` generates `ood_bottom_chips` once branch `n/ood-bottom-chips` is merged
+(PR #20 made `solvers/fvm.py` read `q_bot`). Then, on rvcse with `REF = "main"`:
 
 ```
 python -m data.generate --split ood_bottom_chips --seed 2026 --out <DATASET_V1_ROOT>/ood_bottom_chips --device gpu 2>&1 | tee n21_bottom_log.txt
