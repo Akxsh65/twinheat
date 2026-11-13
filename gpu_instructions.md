@@ -18,7 +18,6 @@ Machines:
 | 4 | N1.4 stencil bandwidth table (`stencil_bw.csv`) | rvcse A100 | the A100 datasheet peak bandwidth in `docs/refs/` | overdue (gate G1) | [ ] |
 | 9 | M2.3 U-Net and FNO+local baselines | rvcse GPU 0 / GPU 2 | nothing (running overnight from 2026-11-12) | week 5 | [ ] |
 | 10 | M2.3 E5 accuracy and the week-5 go/no-go | rvcse | the two baselines committed; `git pull` (e5.yaml lists `ood_bottom_chips`) | week 5 | [ ] |
-| 11 | `scripts/check_gpu.py` on the A100, output into `docs/compute.md` | rvcse | nothing | any time | [ ] |
 
 For 10: `python -m experiments.e5_accuracy --config experiments/configs/e5.yaml --data <dataset_v1>`
 on a clean tree. Every ensemble member's val relative L2 is above the 3 % target of CLAUDE.md §12
@@ -29,6 +28,7 @@ on a clean tree. Every ensemble member's val relative L2 is above the 3 % target
 
 | Was | Prompt | Result |
 |---|---|---|
+| 11 | `scripts/check_gpu.py` on the A100 | all PASS on rvcse GPU 2, 2026-11-13: `docs/compute.md` |
 | 1 | N1.4 GPU tests | ran on the A100 (rvcse); two kernel fixes for a real-GPU compile merged (9434ef0, 7ad689a). Bandwidth table still open: section 4 |
 | 2 | N1.5 T4 rows | not needed (section A measured the oracle machine itself) |
 | A | N1.5 solver table on the oracle machine | `bench/results/solver_table_v1.csv` + `bench/figs/solver_table_v1.png` (c4f7b6f); D5: keep 256² × 4 (docs/decisions.md) |
