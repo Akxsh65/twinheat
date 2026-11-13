@@ -29,7 +29,7 @@
 
 **One line.** Certified neural surrogates for interactive circuit-board thermal design.
 
-**Pipeline.** A 5-member FNO ensemble predicts the steady temperature of a 4-layer, 100 × 100 mm PCB (256 × 256 × 4 = 262,144 unknowns) in milliseconds. An **audited adaptive-conformal gate** decides, for each proposed design, whether to accept the prediction or flag it to the exact solver. A random audit (coin `A_t ~ Bernoulli(p)`, drawn **after** the design is committed) is the only thing that updates the gate's threshold. Flagged and audited designs are verified in one batched, warm-started GPU PCG solve. Each board stops as soon as a deterministic **M-matrix certificate** settles its decision. A WebXR viewer shows the field converging inside a guaranteed band. Fabricated boards under a thermal camera check the solver against reality.
+**Pipeline.** A 5-member FNO ensemble predicts the steady temperature of a 4-layer, 100 × 100 mm PCB (256 × 256 × 4 = 262,144 unknowns) in milliseconds. An **audited adaptive-conformal gate** decides, for each proposed design, whether to accept the prediction or flag it to the exact solver. A random audit (coin `A_t ~ Bernoulli(p)`, drawn **after** the design is committed) is the only thing that updates the gate's threshold. Flagged and audited designs are verified in one batched, warm-started GPU PCG solve. Each board stops as soon as a deterministic **M-matrix certificate** settles its decision. A WebXR viewer shows the field converging inside a guaranteed band.
 
 **Course context.** Final-year project at RVCE serving three subjects (CGVR, PAGP and Deep Learning; 120 marks, assumed 40 each). Team of 3, 12 weeks.
 
@@ -37,11 +37,11 @@
 1. M-matrix certificate with certified early stopping of verifications and audits (Lemma 2, H6, H7).
 2. Per-proposer and per-region guarantees, people included, with certified audit labels (Lemma 1′, gate G6, H8, H4). The per-group result is a *target to be proved*, with an empirical fallback.
 3. GPU certify-on-demand: one batched warm-started PCG launch, each board leaving when certified (H5, H6).
-4. Evidence anchored to reality and shared: rigorous per-iterate bands in anytime rendering, 2–3 fabricated boards under a thermal camera, TwinHeat-Traj v1 benchmark release (H10, E17, E18).
+4. Shared evidence: rigorous per-iterate bands in anytime rendering and the TwinHeat-Traj v1 benchmark release (E18).
 
 **What we do NOT claim (never write these as ours).** Conformal bands for neural operators; online conformal inference with intermittently revealed labels, including the all-round transfer that Lemma 1 restates (Gibbs & Candès 2021; Tu & Giesecke 2026); audits as a source of unbiased labels (Ma & Zhao 2026); active labelling for sequential risk control (Xu et al. 2024; Zrnic & Candès 2024); gating a surrogate to a warm-started solver (DeepOHeat-v1/v2); warm starts (NOWS); energy-form physics losses; learned preconditioners; energy- and A-norm error bounds; the inequality ‖e‖ ≤ ‖A⁻¹‖·‖r‖. Learned certificates failed our preliminary test and are not claimed.
 
-**Research questions.** RQ1 validity for any proposer and per group · RQ2 cost in exact solves · RQ3 certificate settles decisions early · RQ4 certified designs per second · RQ5 effect of the calibrated signal on designers · RQ6 solver vs real boards.
+**Research questions.** RQ1 validity for any proposer and per group · RQ2 cost in exact solves · RQ3 certificate settles decisions early · RQ4 certified designs per second · RQ5 effect of the calibrated signal on designers.
 
 ---
 
@@ -51,7 +51,7 @@
 |---|---|---|---|---|
 | **N** numerics and parallel lead | `<name>` | `solvers/ certify/ pipeline/ bench/ data/generate.py` | PAGP | Lemmas 1 and 1′ (M's) |
 | **M** ML lead | `<name>` | `data/sampler.py data/raster.py models/ gate/ experiments/ release/ server/` (shared) | Deep Learning | Lemma 2 + FP margin (N's) |
-| **G** graphics, VR and hardware lead | `<name>` | `viewer/ hardware/ study/ server/` (shared), deck | CGVR | Contract compliance of server output; figure readability |
+| **G** graphics and VR lead | `<name>` | `viewer/ study/ server/` (shared), deck | CGVR | Contract compliance of server output; figure readability |
 
 A file is changed only by its owner, or by a PR the owner reviews.
 
@@ -77,10 +77,9 @@ twinheat/
   pipeline/  certify_batch.py (PyTorch reference)  certify.cu  scan.cu  gate_bridge.py
   server/    app.py  iterate_stream.py  ws_mock_server.py  model_stub.py
   viewer/    src/ (Three.js, GLSL, WebXR)  study/  overlay/
-  hardware/  kicad/  rig/  analysis/ (register, steady, fit_convection, compare)  boards/ results/
   bench/     solver_bench.py  pipeline_bench.py  roofline.py  server_profile.py  particles_cuda.py  ddp_scaling.py  prelim/ (stop.js, cert.js)  results/  figs/
   experiments/ configs/frozen.yaml  run_gates.py  oracle_label.py  e5_accuracy.py  e7_validity.py  e8_efficiency.py
-               e9_darcy.py  e11_latency/  e13_certificate.py  e14_cert_audit.py  e15_groups.py  e16_active.py  e17_hardware.py  p4_import.py
+               e9_darcy.py  e11_latency/  e13_certificate.py  e14_cert_audit.py  e15_groups.py  e16_active.py  p4_import.py
   study/     protocol.md  prereg.md  stimuli.json  analysis.py  select_stimuli.py
   release/   build_release.py  verify_release.py  traj_v1/
   report/    lemmas.tex  pagp.tex  dl.tex  cgvr.tex  claude_log.md
@@ -212,7 +211,7 @@ Lives in `config/spec_v2.yaml`. The 64² plate (§6) stays as the development co
 | L2 | 35 µm, plane φ₂ ∈ [0.7, 1] with cut-outs | ground plane | core 1.06 mm |
 | L3 | 35 µm, split plane φ₃ ∈ [0.5, 1] | power plane | prepreg 0.20 mm |
 | L4 bottom | 35 or 70 µm, painted φ₄ | signal; convective face h_bot | — |
-If the fab's stack differs, the YAML is changed to the **as-fabricated** stack (decision logged).
+No boards are fabricated (docs/decisions.md, 2026-11-13): this is the modelled stack.
 
 ### 7.2 Equations (θ_l = rise on layer l = 1…4)
 −∇·(G_l ∇θ_l) + Σ_{m=l±1} g_lm (θ_l − θ_m) + h_l θ_l = q_l
@@ -253,7 +252,7 @@ Output `[B, 4, 256, 256]` float32 = θ_l in K (network predicts normalised θ; t
 
 ## 8 · Method and guarantees
 
-Two layers. The **statistical layer** bounds how often a badly wrong prediction is accepted, for any proposer. It applies known online-conformal results. The **deterministic layer** uses the M-matrix structure to certify any approximate field, so each exact solve stops when its decision is settled. Both compare the surrogate with the **exact discrete solver**. The solver-vs-real-board gap is measured separately (H10).
+Two layers. The **statistical layer** bounds how often a badly wrong prediction is accepted, for any proposer. It applies known online-conformal results. The **deterministic layer** uses the M-matrix structure to certify any approximate field, so each exact solve stops when its decision is settled. Both compare the surrogate with the **exact discrete solver**. The gap between the discrete model and a real board is not measured: there is no hardware validation (docs/decisions.md, 2026-11-13), and the report states this as a limitation.
 
 ### 8.1 The certified loop (one step t)
 1. **Propose.** Any proposer produces design x_t (tilted sampler, annealing, gradient population, or a person). It may use all history, including the current model, but **never the audit coin**.
@@ -495,7 +494,8 @@ Server timestamps for E11: every server message may carry `t_server_ns` (monoton
 ### 10.4 Audit log (CSV, one row per proposal)
 `run_id, gate, seed, t, proposer, aggressiveness, group, x_hash, s, r_hot, sd_hot, q_t, B, decision, p_t, audited, T_lo, T_hi, S_hi, err, alpha_t, iters_used, oracle_peak (offline only)`
 
-### 10.5 Hardware record (JSON)
+### 10.5 Hardware record (JSON): not used
+Not used: there is no hardware validation (docs/decisions.md, 2026-11-13). The schema stays in `contracts/` until a signed contracts change removes it (§10).
 `board_id, record_id, power_per_resistor:[{ref, V, I}], ambient_C, camera_frame_id, camera_model, emissivity, sensor_readings:[{id, x_mm, y_mm, T_C}], steady_state:{criterion:"<0.1 K/min over 5 min", met: bool}, timestamp`
 
 ### 10.6 Session log (study; JSONL, one action per line)
@@ -526,7 +526,7 @@ Server timestamps for E11: every server message may carry `t_server_ns` (monoton
 | P4 | logged human sessions from the pilot, replayed | no | — |
 
 ### 11.3 Metrics
-M1 accepted-error rate over all proposals (Lemma 1) and among accepted; M1g the same per group · M2 exact solves used (flags + audits) and PCG iterations spent · M3 best verified peak vs cumulative exact solves (curve, AUC, value at a fixed budget) · M4 surrogate–true gap at the returned design · M5 certified designs/s and per-stage wall-clock · M6 certificate: iterations to certified τ_v, certificate ÷ true error, violations vs oracle (**must be 0**) · M7 model-form error: hotspot and field error, verified solver vs thermal camera on held-out boards, with an uncertainty budget.
+M1 accepted-error rate over all proposals (Lemma 1) and among accepted; M1g the same per group · M2 exact solves used (flags + audits) and PCG iterations spent · M3 best verified peak vs cumulative exact solves (curve, AUC, value at a fixed budget) · M4 surrogate–true gap at the returned design · M5 certified designs/s and per-stage wall-clock · M6 certificate: iterations to certified τ_v, certificate ÷ true error, violations vs oracle (**must be 0**).
 
 ### 11.4 Hypotheses and success criteria
 | H | Hypothesis | Success | If it fails |
@@ -540,10 +540,9 @@ M1 accepted-error rate over all proposals (Lemma 1) and among accepted; M1g the 
 | H7 | certified audits keep validity at lower cost | M1 within Lemma 1′ slack; ≥ 50 % fewer audit iterations | report cost–width trade-off over ε_S |
 | H8 | G6 holds per group where G5 doesn't | M1g ≤ α + slack(n_{a,g}) for every group in ≥ 95 % of runs; G5 exceeds in ≥ 1 group under aggressive proposers | merge sparse groups; empirical if proof incomplete |
 | H9 | G7 keeps validity with fewer audits (exploratory) | H1's criterion with ≥ 30 % fewer audits | report negative; uniform stays default |
-| H10 | verified solver predicts real boards | after fitting h_top, h_bot on board 1 only, held-out hotspot rise within max(2 K, 10 %) | report model-form error with budget |
 
 ### 11.5 Experiments
-E1 solver verification (MMS, energy balance, κ₂ by Lanczos, M-matrix) · E2 kernel roofline · E3 solver comparison (direct, PyAMG-GMRES, Jacobi, red-black, PCG cold/warm; latency + batch throughput) · E4 certify pipeline vs sequential CPU loop (H5) · E5 surrogate accuracy (FNO vs U-Net, ID + 9 OOD, 128→256, energy-loss ablation) · E6 static coverage of conformal bounds ID/OOD · E7 gate validity G0–G7 × P1–P4 × 3 × 5 seeds (H1) · E8 efficiency at equal budget + audit-rate sweep (H2) · E9 Darcy replication (H3) · E10 rendering performance (frame time, headset fps) · E11 anytime-verification latency · E12 pre-registered pilot (H4) · E13 certificate on 4 layers (H6) · E14 certified audits, ε_S sweep (H7) · E15 per-group validity (H8) · E16 risk-adaptive audits, p_min sweep (H9) · E17 hardware validation (H10) · E18 TwinHeat-Traj v1 release.
+E1 solver verification (MMS, energy balance, κ₂ by Lanczos, M-matrix) · E2 kernel roofline · E3 solver comparison (direct, PyAMG-GMRES, Jacobi, red-black, PCG cold/warm; latency + batch throughput) · E4 certify pipeline vs sequential CPU loop (H5) · E5 surrogate accuracy (FNO vs U-Net, ID + 9 OOD, 128→256, energy-loss ablation) · E6 static coverage of conformal bounds ID/OOD · E7 gate validity G0–G7 × P1–P4 × 3 × 5 seeds (H1) · E8 efficiency at equal budget + audit-rate sweep (H2) · E9 Darcy replication (H3) · E10 rendering performance (frame time, headset fps) · E11 anytime-verification latency · E12 pre-registered pilot (H4) · E13 certificate on 4 layers (H6) · E14 certified audits, ε_S sweep (H7) · E15 per-group validity (H8) · E16 risk-adaptive audits, p_min sweep (H9) · E18 TwinHeat-Traj v1 release.
 For H1, H8 and H9, proposers run on surrogate predictions, so one oracle-labelled trajectory set scores all gates offline. H2 reruns G1 and G5 with feedback. Oracle solves: about 1e5, always to 1e-8.
 
 ### 11.6 Darcy second task
@@ -573,26 +572,23 @@ Three.js supplies the scene graph and WebXR session only; every technique below 
 | T1.6 | trust: shimmer (≤ 2 Hz) / hatching / VSUP; badge Predicted (amber) → Verifying (blue) → Verified (green), driven only by server messages | uncertainty vis |
 | T1.7 | anytime verified rendering: blend μ → iterate_k → verified on GPU; band = cert_k (rigorous); labelled "guaranteed band" | progressive rendering |
 | T1.8 | proposer replay from audit logs, decisions colour-coded, best-verified-peak curve | animation |
-| T1.9 | measured overlay: thermal frame → homography (4 fiducials) → projective texture on L1 + difference map | registration, projective texturing |
 Targets: desktop ≥ 60 fps; headset ≥ 72 fps; first iterate < 100 ms after the gate fires; certified field < 2 s. Deferred: heat haze, volume ray marching/marching cubes, AR placement, WebGPU inference.
 Pilot (CG-1): 8–10 participants with PCB or heat-transfer coursework, within-subjects, 3 counterbalanced conditions (none / DeepOHeat-v2-style residual flag / calibrated bound + anytime verification). Task A: 30 predictions, accept or request verification. Task B: cool a board below a limit in 5 min with a fixed solve budget. Measures: accepted-wrong rate, unnecessary-verification rate, verified peak, time, NASA-TLX. Pre-registered in week 5; effect sizes; exploratory. **Runs only after ethics approval.**
 
-## 14 · Hardware validation (E17)
-Boards: 2–3, 100 × 100 mm, 1.6 mm, 4-layer to §7.1, each with 2–3 SMD power resistors (2512, ≤ 50 % rated power each) and 4 fiducials at (5,5), (95,5), (95,95), (5,95) mm. They differ in pours and via arrays. Board 1 is for fitting only; the others are held out. Generated from board records by `hardware/kicad/gen_board.py`, so simulated and physical boards match.
-Rig: bench supply with measured V and I, current-limited; still-air enclosure; low-conductivity non-flammable standoffs; matte black coating of known emissivity; thermal camera on the top face; 2–3 NTC thermistors/thermocouples; ambient logged. Steady state = hotspot change < 0.1 K/min (over 5 min). Never unattended.
-Analysis: register frames (homography); compare with L1 of the verified solver; fit h_top, h_bot on board 1 only (bounds [2, 50]); report hotspot error, field RMSE and an uncertainty budget (camera accuracy, emissivity, power, ambient, fit). `fit.json` is committed before the held-out comparison.
+## 14 · Hardware validation: dropped
+No boards are fabricated and no hardware is used (docs/decisions.md, 2026-11-13). E17, H10, RQ6, M7 and T1.9 are out of scope, and nothing in the report claims agreement with real boards. Solver correctness rests on B1–B5 (§5).
 
 ## 15 · Schedule, decision points, fallbacks
-Weeks: P0 wk 1 · P1 wk 1–3 · P2 wk 3–5 · P3 wk 5–8 · P4 wk 4–8 · P5 wk 4–10 (freeze end wk 10) · hardware wk 2–9 · P6 wk 10–12.
+Weeks: P0 wk 1 · P1 wk 1–3 · P2 wk 3–5 · P3 wk 5–8 · P4 wk 4–8 · P5 wk 4–10 (freeze end wk 10) · P6 wk 10–12.
 Decision points: **wk 3** solve ≥ 0.3 s (else 6 layers or 384²), M-matrix test passes, certificate prototype reproduces §8.6 · **wk 5** surrogate accuracy go/no-go · **wk 6** certificate tightness on 4 layers (saving < 30 % or bound > 50× true error → pointwise variant) · **wk 8** H1 and H6 in hand, G6 proof or "empirical".
-Cut list (in order): LIC mode → procedural traces → Darcy validity-only → G7 offline only → pilot of 6 → two boards.
-Key fallbacks: q oscillates → smaller γ, larger W, p = 0.2 early then 0.1 · small groups (< ~100 audits) → merge or raise p for rare groups · no camera → 6–8 thermistor array · no boards by wk 8 → E17 to journal extension · headset < 72 fps → fewer particles, half-res post, opaque layers · new prior work → narrow G1.
+Cut list (in order): LIC mode → procedural traces → Darcy validity-only → G7 offline only → pilot of 6.
+Key fallbacks: q oscillates → smaller γ, larger W, p = 0.2 early then 0.1 · small groups (< ~100 audits) → merge or raise p for rare groups · headset < 72 fps → fewer particles, half-res post, opaque layers · new prior work → narrow G1.
 
 ## 16 · References and reference material
 ### 16.1 Core citations (verified in Phase 0)
 DeepOHeat-v2 (Yu et al., arXiv 2608.16080, 2026) · Gibbs & Candès, ACI, NeurIPS 2021 · Tu & Giesecke, arXiv 2605.17705 (2026) · Ma & Zhao, arXiv 2608.01378 (2026) · Xu, Karampatziakis & Mineiro, NeurIPS 2024 · Zrnic & Candès, ICML 2024 · Li, Zrnic & Candès, NeurIPS 2025 · Bastani et al., Multivalid CP, NeurIPS 2022 · Lekeufack et al., Conformal Decision Theory · Fannjiang et al., PNAS 2022 · Choi, ICML 2026 · Tibshirani et al. 2019 · Meurant & Tichý 2018 · Varah 1975 · Astral (ICLR 2026) · Hillebrecht & Unger 2023 · Chin 2026 · Li et al., FNO, ICLR 2021 · PDEBench (Takamoto et al. 2022) · McGreivy & Hakim 2024 · NOWS 2025 · Cresswell et al., ICML 2024 · Correll, Moritz & Heer, VSUP, CHI 2018 · Cabral & Leedom, LIC 1993 · Zhang & Chen, PLOS ONE 2024 · IC-ThermBench 2026. Full list: Phase 0 §1 and plan §16/§20.
 ### 16.2 `docs/refs/` (humans add these; Claude reads them, never reconstructs them)
-`deepoheat_v2_alg1.txt` (Algorithm 1 text) · `bastani2022_mvp.txt` (MultiValid algorithm) · `gibbs_candes_prop41.txt` (Lemma 4.1 + Prop. 4.1), `tu_giesecke_thm54_56.txt` (theorem statements; must be taken from **v2**: Prop. 5.5, Assumptions 5.6/5.8, Thm 5.9, Props 5.7, B.14, B.15; see D12) · `pdebench_darcy_fno.txt` (published FNO Darcy error) · `cie1931_2deg_5nm.csv` · `planckian_locus_check.csv` (reference chromaticities) · `fab_stackup.txt` · `camera_datasheet.pdf` · `bench/prelim/stop.js`, `cert.js` (preliminary prototypes).
+`deepoheat_v2_alg1.txt` (Algorithm 1 text) · `bastani2022_mvp.txt` (MultiValid algorithm) · `gibbs_candes_prop41.txt` (Lemma 4.1 + Prop. 4.1), `tu_giesecke_thm54_56.txt` (theorem statements; must be taken from **v2**: Prop. 5.5, Assumptions 5.6/5.8, Thm 5.9, Props 5.7, B.14, B.15; see D12) · `pdebench_darcy_fno.txt` (published FNO Darcy error) · `cie1931_2deg_5nm.csv` · `planckian_locus_check.csv` (reference chromaticities) · `bench/prelim/stop.js`, `cert.js` (preliminary prototypes).
 
 ## 17 · Open decisions (Claude must ask, not assume)
 | ID | Decision | Owner | Due |
