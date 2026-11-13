@@ -5,6 +5,8 @@ Builds on: plan v3.1 (5 Oct 2026), Phase 0 v1.2 (22 Oct 2026). Lives in the repo
 
 ---
 
+> **Hardware dropped (docs/decisions.md, 2026-11-13).** No boards are fabricated and no hardware is used. Prompts G0.3, G1.1, G1.2, G5.4 and M5.2, and every E17, H10 and T1.9 item below, are not done. CLAUDE.md §14 wins where this plan still mentions boards, the rig or the camera.
+
 ## How this plan and CLAUDE.md work together
 
 | File | What it holds | How Claude gets it |
@@ -357,6 +359,8 @@ management paragraph; (5) likely committee questions with our answers.
 CONSTRAINTS: plain formal English; don't overstate risks or benefits; no claims about results.
 ```
 
+> DROPPED (docs/decisions.md, 2026-11-13): no hardware.
+
 **Prompt G0.3 · equipment request (chat)**
 ```
 READ FIRST: CLAUDE.md §14 (hardware validation).
@@ -592,6 +596,8 @@ REPORT BACK: files, final metric vs published, the curve PNG path.
 
 **What it actually does.** `hardware/kicad/gen_board.py` (record → KiCad 4-layer PCB), `hardware/boards/board{1,2,3}.json`, fab order with the stack-up checked; viewer LUTs (inferno, ironbow, white-hot), isolines, hover probe.
 
+> DROPPED (docs/decisions.md, 2026-11-13): no hardware.
+
 **Prompt G1.1 · KiCad generator**
 ```
 READ FIRST: CLAUDE.md §14 (boards, fiducials, resistors), §7.1 (stack), §10.1 (record); files: data/sampler.py,
@@ -609,6 +615,8 @@ CONSTRAINTS: never hand-edit the PCB; anything unmanufacturable is reported, not
 DONE WHEN: all 3 boards pass KiCad DRC; a script confirms fiducial and heater CSVs match the records.
 REPORT BACK: script, the 3 records, DRC summary, list of unmanufacturable features and how they were handled.
 ```
+
+> DROPPED (docs/decisions.md, 2026-11-13): no hardware.
 
 **Prompt G1.2 · fab stack-up check (chat)**
 ```
@@ -1313,7 +1321,7 @@ REPORT BACK: file.
 # Phase 5 · Viewer, VR, pilot study and hardware (weeks 4–10)
 
 **Goal.** An immersive viewer where a person designs a board, watches the guaranteed band shrink as verification runs, and compares with a real board under a thermal camera.
-**Gate 5 (end of week 10, feature freeze):** T1.1–T1.9 on desktop and headset · ≥ 72 fps headset (E10) · E11 targets · pilot of 8–10 run after ethics approval, data anonymised · P4 handed to M · E17 on held-out boards (or formally moved).
+**Gate 5 (end of week 10, feature freeze):** T1.1–T1.8 on desktop and headset · ≥ 72 fps headset (E10) · E11 targets · pilot of 8–10 run after ethics approval, data anonymised · P4 handed to M · E17 on held-out boards (or formally moved).
 
 ## G · Tier 1 features, VR interaction, pilot study, hardware rig
 
@@ -1364,6 +1372,8 @@ TESTS FIRST: dragging emits only query messages; release emits exactly one desig
 DONE WHEN: works in a headset and on desktop; server log confirms message types.
 REPORT BACK: module list with the events each emits.
 ```
+
+> DROPPED (docs/decisions.md, 2026-11-13): no hardware.
 
 **Prompt G5.4 · measured overlay (T1.9) and hardware analysis (with M)**
 ```
@@ -1443,6 +1453,8 @@ appears in any message before its design's pred; 10-minute soak with simulated d
 DONE WHEN: tests pass; G's viewer works against it.
 REPORT BACK: files, soak-test summary.
 ```
+
+> DROPPED (docs/decisions.md, 2026-11-13): no hardware.
 
 **Prompt M5.2 · convection fit (with G)**
 ```

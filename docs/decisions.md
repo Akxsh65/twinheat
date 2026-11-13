@@ -311,3 +311,23 @@ rvcse GPU 0 and FNO+local on GPU 2, side by side. Summaries: experiments/results
 Both reach a lower best val rel. L2 and val hotspot error than every FNO ensemble member, and
 FNO+local is the closest to the 3 % target; the U-Net's best epoch was its last. Single seed
 each; E5 on the test split is the comparison of record. Owner: M.
+
+## No hardware validation, 2026-11-13
+Decision (team): no boards are fabricated and no hardware is used. Dropped: E17, H10, RQ6, M7,
+T1.9 (measured overlay), CLAUDE.md 14 (now a stub), the hardware weeks, the "two boards" cut and
+the camera and board fallbacks, and the fab_stackup / camera_datasheet refs. Plan prompts G0.3,
+G1.1, G1.2, G5.4 and M5.2 are marked DROPPED. Contribution 4 now reads "shared evidence: rigorous
+per-iterate bands in anytime rendering and the TwinHeat-Traj v1 release (E18)". The spec_v2 stack
+(CLAUDE.md 7.1) is the modelled stack. Consequence: the model-to-reality gap is not measured, and
+the report states it as a limitation. Left for G: contracts/schemas/hardware_record.json and its
+examples (removal is a contracts change needing the three signatures, CLAUDE.md 10), the hardware/
+package stub, and branch g/g1.1-kicad-boards (close unmerged).
+
+## Calibration split stays as in v2-data, 2026-11-13
+Decision (team): the cal split of dataset v1 (tag v2-data, ID mode) is kept; no new dataset version.
+Open point for M: CLAUDE.md 9.3 and 11.1 initialise q and calibrate G2 on boards drawn from the
+design-space density p0, and G3's exact weights for P1 are relative to p0. ID-mode cal boards are
+not draws from p0. Lemma 1 (G5-G7) holds for any initial q, so those gates are unaffected. For G2
+and G3, M decides where p0 calibration scores come from, for example design-space boards labelled
+with the oracle solves of N3.2 (experiment data, not a dataset version), or states that G2 and G3
+are calibrated on the ID distribution.
