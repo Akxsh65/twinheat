@@ -38,3 +38,40 @@ def test_valid_arguments_parse() -> None:
 
 def test_no_gpu_peak_is_hard_coded() -> None:
     assert not hasattr(stencil_bw, "PEAK_GBS")
+
+
+class _FakeCuda:
+    """Stand-in for numba.cuda: every event pair reports 2.0 ms."""
+
+    def __init__(self) -> None:
+        self.recorded = 0
+
+    def synchronize(self) -> None:
+        pass
+
+    def event(self):
+        fake = self
+
+        class E:
+            def record(self) -> None:
+                fake.recorded += 1
+
+            def synchronize(self) -> None:
+                pass
+        return E()
+
+    @staticmethod
+    def event_elapsed_time(start, stop) -> float:
+        return 2.0
+
+
+def test_timing_amortises_host_latency_over_back_to_back_launches():
+    """One event pair brackets LAUNCHES queued launches, so a host-side delay before the first
+    launch is divided by LAUNCHES instead of being added to every sample."""
+    calls = []
+    fake = _FakeCuda()
+    ms = stencil_bw.time_kernel(lambda c, x, out: calls.append(1), None, None, None, cuda=fake)
+    assert len(calls) == stencil_bw.WARMUP + stencil_bw.REPS * stencil_bw.LAUNCHES
+    assert fake.recorded == 2 * stencil_bw.REPS
+    assert ms == 2.0 / stencil_bw.LAUNCHES
+    assert stencil_bw.LAUNCHES >= 10

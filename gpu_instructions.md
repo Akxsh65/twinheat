@@ -99,7 +99,11 @@ python -m bench.stencil_bw --peak-gbs 1555.2 --peak-source "docs/refs/a100_pcie_
 
 The peak and its source are in `docs/refs/a100_pcie_40gb_bandwidth.txt`: the card's own memory
 clock and bus width. The current NVIDIA datasheet lists only the 80 GB models. Never use a number
-from memory. Run on one idle GPU (`CUDA_VISIBLE_DEVICES=0` or `2`, nothing else running on it).
+from memory. Run on one idle GPU (`CUDA_VISIBLE_DEVICES=0` or `2`, nothing else running on it)
+while the CPU is quiet (not during E5 or a training run): on 13 Nov, runs during E5 differed by up
+to 8× at B = 1 and 1.3× at B = 64. Run it twice; the two runs' B = 16 and 64 rows should agree
+within a few per cent before the CSV is committed. B = 1 fits in the A100's 40 MB L2 cache, so
+those rows are not DRAM bandwidth.
 
 **Send back:** `bench/results/stencil_bw.csv`, `n14_bw_log.txt`, and the `pytest` summary line.
 
