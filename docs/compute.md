@@ -10,7 +10,7 @@ A100"); it also holds dataset v1 (copy on Drive). Known from runs so far:
 | GPUs | NVIDIA A100-PCIE-40GB, used as GPU 0 and GPU 2 (`CUDA_DEVICE_ORDER=PCI_BUS_ID`) |
 | CPU | Intel Xeon Gold 6226R, 64 logical cores (N1.5 timings use 1 thread) |
 | `scripts/check_gpu.py` output | all PASS, 2026-11-13, on GPU 2 (table below) |
-| Peak memory bandwidth (for N1.4) | from the A100 datasheet, kept in `docs/refs/`; not written here from memory |
+| Peak memory bandwidth (for N1.4) | 1555.2 GB/s, from the card's memory clock and bus width; source and the datasheet check in `docs/refs/a100_pcie_40gb_bandwidth.txt` |
 
 Measured with `scripts/check_gpu.py` (2026-11-13), run with `CUDA_DEVICE_ORDER=PCI_BUS_ID
 CUDA_VISIBLE_DEVICES=2 NUMBA_CUDA_USE_NVIDIA_BINDING=1`, so torch, CuPy and numba each saw one

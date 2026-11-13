@@ -94,11 +94,12 @@ required argument with its source (the script has no built-in GPU number):
 
 ```
 python -m pytest tests/test_gpu_solvers.py -q -rs 2>&1 | tail -3
-python -m bench.stencil_bw --peak-gbs <A100 peak from docs/refs>     --peak-source "docs/refs/<A100 datasheet file>" 2>&1 | tee n14_bw_log.txt
+python -m bench.stencil_bw --peak-gbs 1555.2 --peak-source "docs/refs/a100_pcie_40gb_bandwidth.txt (card memory clock x bus width x 2)" 2>&1 | tee n14_bw_log.txt
 ```
 
-Use the value and file name recorded in `docs/refs/` (the A100 PCIe 40 GB datasheet line); never
-a number from memory. Run on one GPU (`CUDA_VISIBLE_DEVICES=0`), with nothing else on it.
+The peak and its source are in `docs/refs/a100_pcie_40gb_bandwidth.txt`: the card's own memory
+clock and bus width. The current NVIDIA datasheet lists only the 80 GB models. Never use a number
+from memory. Run on one idle GPU (`CUDA_VISIBLE_DEVICES=0` or `2`, nothing else running on it).
 
 **Send back:** `bench/results/stencil_bw.csv`, `n14_bw_log.txt`, and the `pytest` summary line.
 
