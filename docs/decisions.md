@@ -302,3 +302,12 @@ fallback only.
   (rvcse section), Makefile and README `gpu-test`, docstrings in `bench/solver_bench.py` and
   `tests/test_gpu_solvers.py`.
 - Owners to confirm: N + M.
+
+## M2.3 baselines trained (U-Net, FNO+local), 2026-11-13
+U-Net and FNO+local (CLAUDE.md 12) trained with the ensemble settings of 2026-11-09: member 1,
+seed 1, effective batch 32, pre128 100 epochs then ft256 50 epochs, train_ensemble.py defaults.
+Commit 20b65c7 (tree dirty only through models/registry.json, written by the runs); U-Net on
+rvcse GPU 0 and FNO+local on GPU 2, side by side. Summaries: experiments/results/baselines/.
+Both reach a lower best val rel. L2 and val hotspot error than every FNO ensemble member, and
+FNO+local is the closest to the 3 % target; the U-Net's best epoch was its last. Single seed
+each; E5 on the test split is the comparison of record. Owner: M.
