@@ -1,12 +1,11 @@
 """Certified early stopping for PCG on the CPU (Lemma 2(b), CLAUDE.md §8.4, §9.1).
 
-At iterate k, c_k = κ̂ · ‖b − A x_k‖∞ bounds the error |θ − x_k| in every cell, where Aθ = b and
-κ̂ ≥ ‖A⁻¹‖∞ (certify/kappa.py). Following §9.1, the recursive residual is only a cheap trigger;
-a certificate is issued only on the residual recomputed in float64. This CPU version runs the
-whole recursion in float64; the GPU version (N1.4/N4.2) runs it in FP32.
-
-The certificate inherits κ̂'s PLACEHOLDER rounding margin (certify/kappa.py) and adds none of
-its own for the float64 residual; certify/margin.py (N4.1) supplies the derived margin.
+At iterate k, c_k bounds the error |θ − x_k| in every cell, where Aθ = b: c_k is
+certify.margin.residual_bound(κ̂, max |fl(b − A x_k)|, ...) = up(κ̂ (R̂ + τ_r)), the float64
+residual plus its derived rounding bound (derivation Step 7b), with κ̂ ≥ ‖A⁻¹‖∞ from
+certify/kappa.py. Following §9.1, the recursive residual is only a cheap trigger; a certificate is
+issued only on the residual recomputed in float64. This CPU version runs the whole recursion in
+float64; the GPU version (N4.2) runs it in FP32.
 """
 
 from __future__ import annotations
@@ -15,6 +14,8 @@ from collections.abc import Callable
 
 import numpy as np
 import scipy.sparse as sp
+
+from certify.margin import residual_bound, row_abs_sum_bound
 
 __all__ = ["CertificateViolation", "check_bound", "jacobi", "pcg_certified"]
 
@@ -52,7 +53,9 @@ def pcg_certified(
     *,
     history: History | None = None,
 ) -> tuple[np.ndarray, int, float | None]:
-    """Warm-started PCG that stops once κ̂‖b − Ax‖∞ ≤ tau_v (K). Returns (x, iters, cert).
+    """Warm-started PCG that stops once the certified bound is <= tau_v (K): (x, iters, cert).
+
+    kappa must be a guaranteed upper bound on ‖A⁻¹‖∞ (certify.kappa.kappa_from_z / kappa_hat).
 
     cert is the certified bound on max |θ − x| (K) at the returned x, or None if maxit was hit.
     history(k, x_k, c_k), if given, is called at the warm start (k = 0) and after every step
@@ -68,8 +71,11 @@ def pcg_certified(
     b = np.asarray(b, dtype=np.float64)
     x = np.array(x0, dtype=np.float64)
 
+    S, b_inf = row_abs_sum_bound(A), float(np.abs(b).max())
+
     def certificate(xk: np.ndarray) -> float:
-        return float(kappa * np.abs(b - A @ xk).max())
+        return residual_bound(kappa, float(np.abs(b - A @ xk).max()), S, b_inf,
+                              float(np.abs(xk).max()))
 
     r = b - A @ x
     if history is not None:
