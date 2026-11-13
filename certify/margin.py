@@ -58,6 +58,21 @@ arithmetic and rounded up to float64.
 Step 6, evaluation. certified() forms c·(1 + eps) + delta with each floating-point operation
 rounded up (next float toward +∞), so the returned float is ≥ the real value of that expression.
 
+Step 7, the wiring into certify/ (N4.2; for the Lemma 2 checker, M). Three corollaries of Steps
+1-4 used by kappa.py, stopping.py and pointwise.py; each is evaluated in exact rational arithmetic
+and rounded up once, so no further rounding analysis is needed.
+  (a) kappa_upper: ‖A⁻¹‖∞ ≤ κ̂_exact ≤ z_max / (m̂(1 − ρ)) by Step 3 (no certificate unless
+      m̂ ≥ 2 τ_az). The returned κ̂ is that rational rounded up, so it is itself a guaranteed
+      upper bound on ‖A⁻¹‖∞, and it is >= fl(z_max / m̂), as margin() requires.
+  (b) residual_bound: for κ ≥ ‖A⁻¹‖∞ and R̂ = max_i |fl(b − A x)_i|, Lemma 2(b) and Step 4 give
+      ‖θ − x‖∞ ≤ ‖A⁻¹‖∞ ‖r‖∞ ≤ κ (R̂ + τ_r). Returned: up(κ (R̂ + τ_r)).
+  (c) matvec_tau: for any v, |fl(A v)_i − (A v)_i| ≤ γ_7 (|A||v|)_i + 7·2⁻¹⁰⁷⁴ ≤ γ_7 S ‖v‖∞ +
+      7·2⁻¹⁰⁷⁴ (Step 1 with n = 7, then Step 2). pointwise.py uses it with v = w ≥ 0: if
+      fl(A w)_i ≥ |r̂_i| + τ_w + τ_r for every i (the right side rounded up), then
+      (A w)_i ≥ fl(A w)_i − τ_w ≥ |r̂_i| + τ_r ≥ |r_i|, which is Lemma 2(c)'s hypothesis A w ≥ |r|.
+  (d) Outward rounding of the peak interval: fl(x_i ± w_i) is one rounding to nearest, so the next
+      float away from it (toward ±∞) bounds the exact x_i ± w_i.
+
 Assumptions, in the order used: binary64, round to nearest; no overflow; finite inputs; at most 7
 non-zeros per row; z > 0 entrywise; κ̂ ≥ fl(z_max / m̂) is the value used to form c; ‖x‖∞ ≤ X at
 the certified iterate (certified() checks it when given ‖x‖∞); the FP64 recomputation uses the
@@ -75,7 +90,8 @@ from fractions import Fraction
 import numpy as np
 import scipy.sparse as sp
 
-__all__ = ["Margin", "certified", "certify_residual", "gamma", "margin", "row_abs_sum_bound"]
+__all__ = ["Margin", "certified", "certify_residual", "gamma", "kappa_upper", "margin",
+           "matvec_tau", "residual_bound", "residual_tau", "row_abs_sum_bound"]
 
 U = Fraction(1, 2**53)  # unit roundoff of binary64
 ETA = Fraction(1, 2**1074)  # 2·(underflow error of one product)
@@ -119,6 +135,67 @@ def _stat(stats: dict, key: str) -> Fraction:
     return Fraction(v)
 
 
+def _tau_az(S: Fraction, z_max: Fraction) -> Fraction:
+    """Step 3: |fl(A z)_i − (A z)_i| ≤ γ_7 S z_max + 7·2⁻¹⁰⁷⁴ (W)."""
+    return gamma(NNZ_ROW) * S * z_max + NNZ_ROW * ETA
+
+
+def _tau_r(S: Fraction, b_inf: Fraction, X: Fraction) -> Fraction:
+    """Step 4: |fl(b − A x)_i − (b − A x)_i| ≤ γ_8 (‖b‖∞ + S·X) + 8·2⁻¹⁰⁷⁴ (W)."""
+    return gamma(NNZ_ROW + 1) * (b_inf + S * X) + (NNZ_ROW + 1) * ETA
+
+
+def _nonneg(name: str, v: float) -> Fraction:
+    v = float(v)
+    if not (math.isfinite(v) and v >= 0):
+        raise ValueError(f"{name} must be finite and >= 0, got {v!r}")
+    return Fraction(v)
+
+
+def kappa_upper(row_abs_sum_max: float, z_max: float, min_az: float) -> float | None:
+    """Guaranteed κ̂ ≥ ‖A⁻¹‖∞ (K/W) from z > 0 and m̂ = min fl(A z), or None (Step 7a).
+
+    row_abs_sum_max is S from row_abs_sum_bound(A). The caller has checked z > 0 on the stored
+    values and that A is a nonsingular M-matrix (B1). None: m̂ is within rounding of zero.
+    """
+    S, zm = _nonneg("row_abs_sum_max", row_abs_sum_max), _nonneg("z_max", z_max)
+    m_hat = float(min_az)
+    if not math.isfinite(m_hat):
+        raise ValueError(f"min_az must be finite, got {min_az!r}")
+    m_hat = Fraction(m_hat)
+    tau_az = _tau_az(S, zm)
+    if m_hat <= 0 or m_hat < 2 * tau_az or zm <= 0:
+        return None
+    return _up(zm / (m_hat * (1 - tau_az / m_hat)))
+
+
+def residual_tau(row_abs_sum_max: float, b_inf: float, x_inf: float) -> float:
+    """τ_r (W), rounded up: |fl(b − A x)_i − (b − A x)_i| ≤ τ_r for ‖x‖∞ ≤ x_inf (Step 4)."""
+    return _up(_tau_r(_nonneg("row_abs_sum_max", row_abs_sum_max), _nonneg("b_inf", b_inf),
+                      _nonneg("x_inf", x_inf)))
+
+
+def matvec_tau(row_abs_sum_max: float, v_inf: float) -> float:
+    """τ (W), rounded up: |fl(A v)_i − (A v)_i| ≤ τ for any v with ‖v‖∞ ≤ v_inf (Step 7c)."""
+    return _up(_tau_az(_nonneg("row_abs_sum_max", row_abs_sum_max), _nonneg("v_inf", v_inf)))
+
+
+def residual_bound(kappa: float, r_inf: float, row_abs_sum_max: float, b_inf: float,
+                   x_inf: float) -> float:
+    """Guaranteed bound on ‖θ − x‖∞ (K): up(κ (R̂ + τ_r)) (Step 7b).
+
+    kappa must be a guaranteed upper bound on ‖A⁻¹‖∞ (kappa_upper); r_inf = R̂ = max |fl(b − A x)|
+    from the FP64 recomputation; x_inf = ‖x‖∞ of that iterate.
+    """
+    k = Fraction(float(kappa))
+    if not (math.isfinite(float(kappa)) and k > 0):
+        raise ValueError(f"kappa must be finite and > 0, got {kappa!r}")
+    R = _nonneg("r_inf", r_inf)
+    tau_r = _tau_r(_nonneg("row_abs_sum_max", row_abs_sum_max), _nonneg("b_inf", b_inf),
+                   _nonneg("x_inf", x_inf))
+    return _up(k * (R + tau_r))
+
+
 def margin(stats: dict) -> Margin | None:
     """eps_total, delta_abs and the min(A z) threshold for one design, or None (no certificate).
 
@@ -129,14 +206,14 @@ def margin(stats: dict) -> Margin | None:
     S, z_max = _stat(stats, "row_abs_sum_max"), _stat(stats, "z_max")
     m_hat, kappa = _stat(stats, "min_az"), _stat(stats, "kappa")
     b_inf, X = _stat(stats, "b_inf"), _stat(stats, "x_inf_max")
-    tau_az = gamma(NNZ_ROW) * S * z_max + NNZ_ROW * ETA
+    tau_az = _tau_az(S, z_max)
     if m_hat < 2 * tau_az or m_hat <= 0:
         return None  # min(Az) is within rounding of zero: no certificate (§8.4)
     if kappa < Fraction(float(z_max / m_hat)) * (1 - U):  # κ̂ must be >= fl(z_max / m̂)
         raise ValueError(f"kappa {float(kappa)} is below fl(z_max / min_az) = "
                          f"{float(z_max / m_hat)}")
     rho = tau_az / m_hat
-    tau_r = gamma(NNZ_ROW + 1) * (b_inf + S * X) + (NNZ_ROW + 1) * ETA
+    tau_r = _tau_r(S, b_inf, X)
     eps = 1 / ((1 - U) ** 2 * (1 - rho)) - 1
     delta = kappa * tau_r / ((1 - U) * (1 - rho))
     return Margin(eps_total=_up(eps), delta_abs=_up(delta), min_az_threshold=_up(2 * tau_az),

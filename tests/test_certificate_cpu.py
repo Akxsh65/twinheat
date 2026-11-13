@@ -102,7 +102,7 @@ def test_kappa_with_z_equal_ones_is_varah():
     margin = np.asarray(A.sum(axis=1)).ravel()
     assert margin.min() > 0
     k = kappa_from_z(A, np.ones(A.shape[0]))
-    assert k == pytest.approx(1.0 / margin.min(), rel=2e-6)  # the (1 + 1e-6) placeholder margin
+    assert k == pytest.approx(1.0 / margin.min(), rel=1e-10)  # derived rounding margin only
 
 
 def test_kappa_hat_raises_on_wrong_input():
@@ -185,8 +185,7 @@ def test_check_bound_raises_with_board_iterate_bound_and_error():
 def test_pointwise_bound_covers_every_cell_and_the_peak(i, sweeps):
     rec, A, b, theta = _case(i)
     x = gauss_seidel_smooth(A, b, _perturbed(theta, 0.03, seed=i), sweeps)
-    r = b - A @ x
-    w = pointwise_bound(A, r)
+    w = pointwise_bound(A, b, x)
     err = np.abs(theta - x)
     bad = np.flatnonzero(err > w)
     assert bad.size == 0, f"{rec['id']} sweeps {sweeps}: |e| > w at {bad[:5]}"
@@ -206,12 +205,13 @@ def test_gauss_seidel_lowers_the_error():
 def test_pointwise_bound_validity_is_asserted():
     """A residual the approximate solve cannot cover must raise, not return a bad w."""
     _, A, b, _ = _case(0)
-    r = np.zeros(A.shape[0])
-    r[5] = 1.0
-    w = pointwise_bound(A, r)
-    assert np.all(A @ w >= np.abs(r)) and w.min() >= 0
+    x = np.zeros(A.shape[0])
+    bb = np.zeros(A.shape[0])
+    bb[5] = 1.0  # r = bb − A·0 = e₅
+    w = pointwise_bound(A, bb, x)
+    assert np.all(A @ w >= np.abs(bb)) and w.min() >= 0
     with pytest.raises(ValueError, match="M-matrix"):
-        pointwise_bound(-A, r)
+        pointwise_bound(-A, bb, x)
 
 
 def test_red_black_gauss_seidel_is_one_colour_then_the_other():
