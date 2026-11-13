@@ -1,7 +1,7 @@
 # TwinHeat to-do list
 
 Updated 13 Nov 2026, after the no-hardware and cal-split decisions (week 4; week 1 began 19 Oct). Owners follow CLAUDE.md §2: **N** numerics and
-parallel, **M** ML, **G** graphics, VR and hardware. "GPU" means the rvcse A100 (`gpu_instructions.md`);
+parallel, **M** ML, **G** graphics and VR. "GPU" means the rvcse A100 (`gpu_instructions.md`);
 everything else runs on a laptop. Tick items in the PR that finishes them.
 
 ## Running now
