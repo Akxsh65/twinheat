@@ -1,7 +1,7 @@
 # TwinHeat to-do list
 
-Updated 13 Nov 2026 (week 4; week 1 began 19 Oct). Owners follow CLAUDE.md §2: **N** numerics and
-parallel, **M** ML, **G** graphics, VR and hardware. "GPU" means the rvcse A100 (`gpu_instructions.md`);
+Updated 13 Nov 2026, after the no-hardware and cal-split decisions (week 4; week 1 began 19 Oct). Owners follow CLAUDE.md §2: **N** numerics and
+parallel, **M** ML, **G** graphics and VR. "GPU" means the rvcse A100 (`gpu_instructions.md`);
 everything else runs on a laptop. Tick items in the PR that finishes them.
 
 ## Running now
@@ -18,19 +18,16 @@ everything else runs on a laptop. Tick items in the PR that finishes them.
       decision (five more members, about two days of GPU).
 - [ ] **Energy-loss ablation** (M, GPU), the last E5 row (§12). M first sets `seed`, `epochs` and
       `energy_weight` under `energy_ablation` in `experiments/configs/e5.yaml`.
-- [ ] **N1.4 bandwidth table** (N, GPU, about 5 min). Overdue for Gate 1. First, put the A100 PCIe 40 GB
-      peak memory bandwidth from NVIDIA's datasheet into `docs/refs/`. Then run `bench/stencil_bw.py`
-      with `--peak-gbs` and `--peak-source`.
+- [ ] **N1.4 bandwidth table** (N, GPU, about 10 min). Overdue for Gate 1. Merge `n/gpu-name-nul`
+      first, so the CSV's GPU column has no NUL padding. Read the peak from the card (memory clock
+      × bus width), check it against NVIDIA's A100 datasheet, record both in `docs/refs/`, then run
+      `bench/stencil_bw.py` with `--peak-gbs` and `--peak-source` on an idle GPU.
+- [ ] **Merge the scope change** (`docs/no-hardware`): hardware dropped, cal split kept. All three
+      review (it changes CLAUDE.md).
 - [ ] **Merge the N4.2 margin wiring** (`n/n42-margin`). N reviews; M checks the derivation, Step 7 of
       `certify/margin.py`.
 - [ ] **Pilot pre-registration** (G, §13, "pre-registered in week 5"): `study/prereg.md`. The pilot
       itself runs only after ethics approval.
-- [ ] **Off-server copy** (N + M). Copy dataset v1 and the 14 checkpoints in `models/registry.json` to
-      Drive (CLAUDE.md §4), and check their hashes against the manifests and the registry. Today
-      rvcse holds the only copy.
-- [ ] **Calibration split mode** (M). The cal split is ID-mode, but §9.3 and §11.1 calibrate on the
-      design-space density p₀. Decide before the gate experiments. If it has to be p₀, the split is
-      new data, a new dataset version (§5), because `v2-data` is already tagged.
 
 ## Reviews and sign-offs (people, no GPU)
 
@@ -53,9 +50,6 @@ everything else runs on a laptop. Tick items in the PR that finishes them.
 
 ## Phase 1 leftovers
 
-- [ ] **G1.1 KiCad boards**: the branch is one commit ahead of `main`; review and merge (G).
-- [ ] **G1.2 fab stack-up**: add `docs/refs/fab_stackup.txt` (G). If the fab's stack differs, change
-      `spec_v2.yaml` to the as-fabricated stack and log it (§7.1).
 - [ ] **Solver table**: re-run `solver_table_v1.csv` on a tagged commit (its GPU columns came from the
       dirty 7ad689a) before quoting it (N, GPU). Strip the NUL padding of the numba GPU name in
       `bench/solver_bench.py` and `scripts/check_gpu.py` first.
@@ -69,6 +63,10 @@ everything else runs on a laptop. Tick items in the PR that finishes them.
 - [ ] **N3.2 oracle labels** (N). About 1e5 solves to 1e-8 on the CPU pool. The test compares CPU and
       GPU labels on 50 boards.
 - [ ] **N3.3 certified audits** (N), using the batched PCG.
+- [ ] **Calibration scores for G2 and G3** (M). The cal split stays ID-mode (decided 13 Nov), but
+      §9.3 and §11.1 calibrate G2 and G3 on the design-space density p₀. Decide where p₀ scores come
+      from (for example design-space boards labelled by N3.2's oracle solves), or say that G2 and G3
+      are calibrated on the ID distribution. G5–G7 are unaffected (Lemma 1 holds for any initial q).
 - [ ] **M3.4 Lemma 1 and 1′ write-up check** (M drafts, N signs). G6's per-group result is proved by
       week 7, or reported as empirical by week 8.
 - [ ] **D4 frozen hyperparameters** in `experiments/configs/frozen.yaml` (M, week 6), committed before
@@ -101,13 +99,6 @@ everything else runs on a laptop. Tick items in the PR that finishes them.
 - [ ] **G5.x viewer** (G). Targets: ≥ 60 fps desktop, ≥ 72 fps headset (§13).
 - [ ] **Pilot study, E12** (G). Runs only after ethics approval.
 
-## Hardware validation (E17, weeks 2–9; G)
-
-- [ ] **Boards**: 2–3 boards fabricated to the stack-up.
-- [ ] **Rig**: built (§14).
-- [ ] **Fit on board 1**: commit `fit.json` before the held-out comparison.
-- [ ] **Held-out comparison** with its uncertainty budget.
-
 ## Phase 6: freeze and release
 
 - [ ] **Tag `v3-freeze`** (week 10).
@@ -125,7 +116,19 @@ Decided: D1, D2, D3, D5, D6, D7, D8, D9, D13 (`docs/decisions.md`). Still open:
 - [ ] **D12**: Tu & Giesecke theorem numbers in §8.2, and regenerating that refs file from v2 (N + M).
 - [ ] **D14**: audit iteration cap (N + M, before E14).
 
+## Deferred
+
+- [ ] **Off-server copy** (N + M), left for later (13 Nov). Copy dataset v1 and the 14 checkpoints in
+      `models/registry.json` to Drive (CLAUDE.md §4), and check their hashes. Until then rvcse holds
+      the only copy.
+
 ## Housekeeping
+
+- [ ] **Hardware clean-up** (G). Hardware validation is dropped (decisions.md, 13 Nov).
+  - [ ] Remove `contracts/schemas/hardware_record.json` and its examples. This is a contracts change
+        and needs the three signatures (CLAUDE.md §10).
+  - [ ] Remove the `hardware/` package stub.
+  - [ ] Close branch `g/g1.1-kicad-boards` unmerged.
 
 - [ ] **Credentials on rvcse.**
   - [ ] Set a repo-local `git config user.name` / `user.email`; some commits arrived as "Bindu9468".
