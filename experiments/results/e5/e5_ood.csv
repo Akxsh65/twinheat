@@ -1,0 +1,11 @@
+split,n,flagged,flag_rate,threshold,kind
+test,1000,34,0.034,9.346440941217802,false-positive rate (ID)
+ood_1,500,103,0.206,9.346440941217802,recall (OOD)
+ood_2,500,429,0.858,9.346440941217802,recall (OOD)
+ood_3,500,19,0.038,9.346440941217802,recall (OOD)
+ood_4,500,20,0.04,9.346440941217802,recall (OOD)
+ood_6,500,259,0.518,9.346440941217802,recall (OOD)
+ood_7,500,363,0.726,9.346440941217802,recall (OOD)
+ood_3oz,500,25,0.05,9.346440941217802,recall (OOD)
+ood_dense_vias,500,23,0.046,9.346440941217802,recall (OOD)
+ood_bottom_chips,500,1,0.002,9.346440941217802,recall (OOD)

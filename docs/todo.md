@@ -6,16 +6,14 @@ everything else runs on a laptop. Tick items in the PR that finishes them.
 
 ## Running now
 
-- [ ] **E5 accuracy and the week-5 go/no-go** (M, GPU). Started 13 Nov on rvcse GPU 0, from 45913b6.
-      When it finishes: commit `experiments/results/e5/` and read `go_no_go.md`.
+- [x] **E5 accuracy and the week-5 go/no-go** (M, GPU). Ran 13 Nov on rvcse GPU 0 at 45913b6;
+      results in `experiments/results/e5/`. NO-GO on rel. L2.
 
 ## Week 5 (Gate 2)
 
-- [ ] **Week-5 go/no-go decision** (M + N), from E5's `go_no_go.md`, logged in `docs/decisions.md`.
-      On validation, every FNO member is above the 3 % rel. L2 target, hotspot error is below 1.5 K,
-      and FNO+local comes closest (`experiments/results/baselines/`). §12's fallback is to run the gate
-      experiments at 128² and say so. Using FNO+local as the main surrogate instead would be a team
-      decision (five more members, about two days of GPU).
+- [x] **Week-5 go/no-go decision** (M + N), 16 Nov: proceed with the FNO ensemble at 256², no
+      retraining (`docs/decisions.md`). The report states the rel. L2 miss and that FNO+local was
+      better on test.
 - [ ] **Energy-loss ablation** (M, GPU), the last E5 row (§12). M first sets `seed`, `epochs` and
       `energy_weight` under `energy_ablation` in `experiments/configs/e5.yaml`.
 - [x] **N1.4 bandwidth table** (N, GPU, about 10 min). Done 16 Nov (`bench/results/stencil_bw.csv`). Overdue for Gate 1. Merge `n/gpu-name-nul`

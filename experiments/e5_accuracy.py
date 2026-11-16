@@ -210,7 +210,17 @@ def _go_no_go(rows: list[dict[str, Any]], gate: dict[str, Any]) -> tuple[bool, s
 
 # ---------------------------------------------------------------------------- main
 
+def _commit() -> str:
+    """Short HEAD, with "-dirty" if the tree has changes; "unknown" outside a git checkout."""
+    try:
+        return _git("rev-parse", "--short", "HEAD") + ("-dirty" if _git("status", "--porcelain")
+                                                       else "")
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
 def run(cfg: dict[str, Any], data: Path, out: Path, device: str) -> dict[str, Any]:
+    commit = _commit()  # before any output exists: E5 writes its results inside the repo
     out.mkdir(parents=True, exist_ok=True)
     registry, norm = ROOT / cfg["registry"], ROOT / cfg["norm_stats"]
     if Path(cfg["registry"]).is_absolute():
@@ -254,11 +264,6 @@ def run(cfg: dict[str, Any], data: Path, out: Path, device: str) -> dict[str, An
     ok, text = _go_no_go(rows, cfg["go_no_go"])
     (out / "go_no_go.md").write_text(text + "\n", encoding="utf-8")
     _write_tables(rows, ood, cfg["go_no_go"], out / "e5_tables.tex")
-    try:
-        commit = _git("rev-parse", "--short", "HEAD") + ("-dirty" if _git("status", "--porcelain")
-                                                         else "")
-    except (OSError, subprocess.CalledProcessError):
-        commit = "unknown"
     gpu = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none"
     dhash = dataset_hash(Path(data) / "train")
     seeds = sorted({m["seed"] for e in models.values() for m in e.members})
