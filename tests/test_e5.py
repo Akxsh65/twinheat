@@ -211,6 +211,22 @@ def test_e5_produces_the_table_figure_ood_and_go_no_go(world, tmp_path):
     assert json.loads((out / "run_info.json").read_text(encoding="utf-8"))["N"] == N
 
 
+def test_e5_records_the_commit_before_writing_any_output(world, tmp_path, monkeypatch):
+    """The 13 Nov run read "45913b6-dirty": the commit was taken after E5 had written its own
+    results into the repo. It must be taken first, so a clean tree is recorded as clean."""
+    out = tmp_path / "out"
+    seen = []
+
+    def fake_commit() -> str:
+        seen.append(out.exists() and any(out.iterdir()))
+        return "abc1234"
+    monkeypatch.setattr(e5, "_commit", fake_commit)
+    e5.main(["--config", str(make_config(world, tmp_path)), "--data", str(world["root"]),
+             "--out", str(out), "--device", "cpu", "--allow-dirty"])
+    assert seen == [False]
+    assert json.loads((out / "run_info.json").read_text(encoding="utf-8"))["commit"] == "abc1234"
+
+
 def test_e5_refuses_a_config_with_uncommitted_changes_or_missing_fields(world, tmp_path,
                                                                         monkeypatch):
     p = ROOT / "experiments" / "configs" / "e5.yaml"
