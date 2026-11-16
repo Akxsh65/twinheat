@@ -331,3 +331,14 @@ not draws from p0. Lemma 1 (G5-G7) holds for any initial q, so those gates are u
 and G3, M decides where p0 calibration scores come from, for example design-space boards labelled
 with the oracle solves of N3.2 (experiment data, not a dataset version), or states that G2 and G3
 are calibrated on the ID distribution.
+
+## Week-5 go/no-go: proceed with the FNO ensemble at 256², 2026-11-16
+E5 (run at 45913b6; experiments/results/e5/): ensemble test rel. L2 5.41 % (target < 3 %), hotspot
+error 0.76 K (target < 1.5 K): NO-GO on rel. L2. Decision (N + M, approved 16 Nov): keep the trained
+5-member FNO ensemble at 256²; no retraining; do not move the gate experiments to 128².
+Reasons: Lemma 1's validity does not depend on surrogate accuracy; the 128² fallback does not fix
+the miss (pre128 val rel. L2 5.5-5.6 %); the hotspot target is met.
+Consequences: more flagged designs and exact solves (H2, RQ2, H5); the report states the miss and
+that a single FNO+local (test rel. L2 4.78 %) outperformed the ensemble on test.
+Note: run_info.json reads 45913b6-dirty only because E5 took the commit after writing its own
+results into the repo (fixed on this branch); the tree was clean when the run started.
