@@ -1,0 +1,33 @@
+% E5 (experiments/e5_accuracy.py); every number is computed by the script.
+\begin{tabular}{lrrrrr}
+\hline
+Model & rel.\ $L_2$ mean & rel.\ $L_2$ P95 & peak err.\ (K) & hotspot err.\ (K) & peak loc.\ (mm) \\
+\hline
+ensemble & 0.0541 & 0.1307 & 0.799 & 0.764 & 1.51 \\
+fno\_pre128\_at\_256 & 0.2767 & 0.9555 & 2.029 & 1.858 & 3.55 \\
+unet & 0.0543 & 0.1007 & 0.767 & 0.710 & 2.12 \\
+fno\_local & 0.0478 & 0.1079 & 0.651 & 0.612 & 1.81 \\
+member1 & 0.0640 & 0.1533 & 0.872 & 0.823 & 2.42 \\
+member2 & 0.0603 & 0.1434 & 0.857 & 0.819 & 2.09 \\
+member3 & 0.0618 & 0.1419 & 0.910 & 0.850 & 2.14 \\
+member4 & 0.0610 & 0.1415 & 0.888 & 0.864 & 2.01 \\
+member5 & 0.0625 & 0.1456 & 0.857 & 0.814 & 2.13 \\
+\hline
+\end{tabular}
+
+\begin{tabular}{lrrrr}
+\hline
+Split (ensemble) & rel.\ $L_2$ mean & hotspot err.\ (K) & peak loc.\ (mm) & OOD flag rate \\
+\hline
+test & 0.0541 & 0.764 & 1.51 & 0.034 \\
+ood\_1 & 0.0536 & 1.781 & 2.73 & 0.206 \\
+ood\_2 & 0.1160 & 5.502 & 4.40 & 0.858 \\
+ood\_3 & 0.0508 & 0.723 & 1.81 & 0.038 \\
+ood\_4 & 0.0499 & 0.797 & 1.69 & 0.040 \\
+ood\_6 & 0.1166 & 0.980 & 2.18 & 0.518 \\
+ood\_7 & 0.1585 & 4.273 & 3.06 & 0.726 \\
+ood\_3oz & 0.0681 & 1.126 & 2.03 & 0.050 \\
+ood\_dense\_vias & 0.0616 & 0.888 & 1.90 & 0.046 \\
+ood\_bottom\_chips & 0.9374 & 24.312 & 42.45 & 0.002 \\
+\hline
+\end{tabular}
