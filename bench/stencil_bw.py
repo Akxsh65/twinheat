@@ -5,7 +5,9 @@
 
 Needs a CUDA GPU (the rvcse A100; docs/decisions.md, "GPU runs on the college A100"). For each
 kernel, dtype and batch size, times A x on the 256² × 4 board with CUDA events (10 warm-ups,
-median of 20, as N1.5 specifies) and reports
+median of 20 samples, as N1.5 specifies; each sample brackets LAUNCHES back-to-back launches and is
+divided by LAUNCHES, so host-side launch latency, which grows when the CPU is busy, is amortised
+instead of being added to every sample) and reports
     GB/s = (7 coefficient arrays + x read + y written) × cells × itemsize / median time,
 the compulsory traffic, against the GPU's peak memory bandwidth. The peak is NOT built in: it is
 a required argument taken from the GPU's datasheet (kept in docs/refs/), and its source is written
@@ -34,6 +36,7 @@ from twinheat.gpu import device_name
 
 ROOT = Path(__file__).resolve().parents[1]
 WARMUP, REPS = 10, 20
+LAUNCHES = 20  # back-to-back launches per timed sample (see the docstring)
 BATCHES = (1, 16, 64)
 DTYPES = (np.float32, np.float64)
 
@@ -45,9 +48,12 @@ def _commit() -> str:
     return git("rev-parse", "--short", "HEAD") + ("-dirty" if git("status", "--porcelain") else "")
 
 
-def time_kernel(apply, c, x, out) -> float:
-    """Median milliseconds of apply(c, x, out) over REPS launches after WARMUP launches."""
-    from numba import cuda  # GPU-only imports stay out of module scope, so parse_args runs in CI
+def time_kernel(apply, c, x, out, cuda=None) -> float:
+    """Median milliseconds per launch of apply(c, x, out): WARMUP launches, then REPS samples of
+    LAUNCHES back-to-back launches between one CUDA event pair. cuda: numba.cuda (tests pass a
+    stand-in)."""
+    if cuda is None:
+        from numba import cuda  # GPU-only import stays out of module scope (parse_args runs in CI)
 
     for _ in range(WARMUP):
         apply(c, x, out)
@@ -56,10 +62,11 @@ def time_kernel(apply, c, x, out) -> float:
     for _ in range(REPS):
         start, stop = cuda.event(), cuda.event()
         start.record()
-        apply(c, x, out)
+        for _ in range(LAUNCHES):
+            apply(c, x, out)
         stop.record()
         stop.synchronize()
-        ms.append(cuda.event_elapsed_time(start, stop))
+        ms.append(cuda.event_elapsed_time(start, stop) / LAUNCHES)
     return float(np.median(ms))
 
 
@@ -112,7 +119,8 @@ def main(argv: list[str] | None = None) -> None:
                     "peak_GBs_datasheet": peak, "peak_source": args.peak_source,
                     "pct_of_peak": f"{100 * gbs / peak:.1f}",
                     "bytes_model": f"{streams} streams x cells x {item} B",
-                    "timing": f"CUDA events, {WARMUP} warm-ups, median of {REPS}",
+                    "timing": f"CUDA events, {WARMUP} warm-ups, median of {REPS} samples "
+                              f"of {LAUNCHES} back-to-back launches",
                 })
                 print(f"{name:5s} {np.dtype(dtype).name:7s} B={B:3d}: {ms:8.3f} ms "
                       f"{gbs:7.1f} GB/s ({100 * gbs / peak:.0f} % of {peak:g})")

@@ -18,7 +18,7 @@ everything else runs on a laptop. Tick items in the PR that finishes them.
       decision (five more members, about two days of GPU).
 - [ ] **Energy-loss ablation** (M, GPU), the last E5 row (§12). M first sets `seed`, `epochs` and
       `energy_weight` under `energy_ablation` in `experiments/configs/e5.yaml`.
-- [ ] **N1.4 bandwidth table** (N, GPU, about 10 min). Overdue for Gate 1. Merge `n/gpu-name-nul`
+- [x] **N1.4 bandwidth table** (N, GPU, about 10 min). Done 16 Nov (`bench/results/stencil_bw.csv`). Overdue for Gate 1. Merge `n/gpu-name-nul`
       first, so the CSV's GPU column has no NUL padding. Read the peak from the card (memory clock
       × bus width), check it against NVIDIA's A100 datasheet, record both in `docs/refs/`, then run
       `bench/stencil_bw.py` with `--peak-gbs` and `--peak-source` on an idle GPU.

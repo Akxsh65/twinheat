@@ -15,7 +15,6 @@ Machines:
 
 | # | Prompt | Where | Needs first | Needed by | Status |
 |---|---|---|---|---|---|
-| 4 | N1.4 stencil bandwidth table (`stencil_bw.csv`) | rvcse A100 | the A100 datasheet peak bandwidth in `docs/refs/` | overdue (gate G1) | [ ] |
 | 9 | M2.3 U-Net and FNO+local baselines | rvcse GPU 0 / GPU 2 | nothing (running overnight from 2026-11-12) | week 5 | [ ] |
 | 10 | M2.3 E5 accuracy and the week-5 go/no-go | rvcse | the two baselines committed; `git pull` (e5.yaml lists `ood_bottom_chips`) | week 5 | [ ] |
 
@@ -28,6 +27,7 @@ on a clean tree. Every ensemble member's val relative L2 is above the 3 % target
 
 | Was | Prompt | Result |
 |---|---|---|
+| 4 | N1.4 stencil bandwidth table | `bench/results/stencil_bw.csv` on rvcse GPU 0, 2026-11-16: two runs agree within 2 % at B = 16 and 64; GPU tests 71 passed |
 | 11 | `scripts/check_gpu.py` on the A100 | all PASS on rvcse GPU 2, 2026-11-13: `docs/compute.md` |
 | 1 | N1.4 GPU tests | ran on the A100 (rvcse); two kernel fixes for a real-GPU compile merged (9434ef0, 7ad689a). Bandwidth table still open: section 4 |
 | 2 | N1.5 T4 rows | not needed (section A measured the oracle machine itself) |
@@ -94,11 +94,16 @@ required argument with its source (the script has no built-in GPU number):
 
 ```
 python -m pytest tests/test_gpu_solvers.py -q -rs 2>&1 | tail -3
-python -m bench.stencil_bw --peak-gbs <A100 peak from docs/refs>     --peak-source "docs/refs/<A100 datasheet file>" 2>&1 | tee n14_bw_log.txt
+python -m bench.stencil_bw --peak-gbs 1555.2 --peak-source "docs/refs/a100_pcie_40gb_bandwidth.txt (card memory clock x bus width x 2)" 2>&1 | tee n14_bw_log.txt
 ```
 
-Use the value and file name recorded in `docs/refs/` (the A100 PCIe 40 GB datasheet line); never
-a number from memory. Run on one GPU (`CUDA_VISIBLE_DEVICES=0`), with nothing else on it.
+The peak and its source are in `docs/refs/a100_pcie_40gb_bandwidth.txt`: the card's own memory
+clock and bus width. The current NVIDIA datasheet lists only the 80 GB models. Never use a number
+from memory. Run on one idle GPU (`CUDA_VISIBLE_DEVICES=0` or `2`, nothing else running on it)
+while the CPU is quiet (not during E5 or a training run): on 13 Nov, runs during E5 differed by up
+to 8× at B = 1 and 1.3× at B = 64. Run it twice; the two runs' B = 16 and 64 rows should agree
+within a few per cent before the CSV is committed. B = 1 fits in the A100's 40 MB L2 cache, so
+those rows are not DRAM bandwidth.
 
 **Send back:** `bench/results/stencil_bw.csv`, `n14_bw_log.txt`, and the `pytest` summary line.
 

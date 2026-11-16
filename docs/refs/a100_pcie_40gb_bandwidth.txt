@@ -1,0 +1,28 @@
+A100 PCIe 40 GB: peak memory bandwidth for N1.4 (bench/stencil_bw.py --peak-gbs)
+Recorded 2026-11-13. Machine: rvcse, GPU 2 (CUDA_DEVICE_ORDER=PCI_BUS_ID); both rvcse A100s are the
+same model (docs/compute.md).
+
+VALUE USED: 1555.2 GB/s (decimal: 1 GB/s = 1e9 bytes/s)
+
+SOURCE 1 (used): the card's own properties
+  Query: cupy.cuda.runtime.getDeviceProperties(0) with CUDA_VISIBLE_DEVICES=2
+         (CuPy 14.0.1, CUDA runtime 12.9, driver 580.126.18)
+  Output, as printed on rvcse:
+    NVIDIA A100-PCIE-40GB | memory clock 1215000 kHz | bus 5120 bit
+    theoretical peak = 2 x clock x bus/8 = 1555.2 GB/s
+  Arithmetic: 2 (double data rate) x 1.215e9 Hz x 5120 bit / 8 bit per byte
+            = 2 x 1.215e9 x 640 B/s = 1.5552e12 B/s = 1555.2 GB/s.
+  The formula is the standard theoretical-bandwidth calculation (memory clock x bus width x 2 for
+  double data rate), as in NVIDIA's CUDA C++ Best Practices Guide. UNVERIFIED: that guide is not
+  in docs/refs.
+
+SOURCE 2 (checked; does not cover this card): NVIDIA datasheet
+  Title: "NVIDIA A100 Tensor Core GPU Datasheet"
+  URL:   https://resources.nvidia.com/en-us-gpu/nvidia-a100-datashee-1 (saved 2026-11-13)
+  Its "NVIDIA A100 TENSOR CORE GPU SPECIFICATIONS (SXM4 AND PCIE FORM FACTORS)" table has two
+  columns only:
+    GPU Memory Bandwidth | A100 80GB PCIe: 1,935GB/s | A100 80GB SXM: 2,039GB/s
+  The rvcse card is the A100 PCIe 40 GB, which is not in this edition, so neither number applies.
+
+TO CONFIRM (UNVERIFIED, from memory): an earlier edition of the datasheet listed the A100 40GB PCIe
+at 1,555 GB/s, which agrees with Source 1. If that edition is found, quote its row here.
