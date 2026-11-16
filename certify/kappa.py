@@ -7,9 +7,10 @@ because A⁻¹ ≥ 0 and Az ≥ min(Az)·1 give A⁻¹1 ≤ z / min(Az). Any pos
 min z > 0 and min Az > 0 are done in float64 (§8.4). The caller must already know that A is a
 nonsingular M-matrix (solvers/mmatrix_test.py, invariant B1); nothing here re-proves it.
 
-PLACEHOLDER margin: the result is multiplied by (1 + 1e-6) as in CLAUDE.md §9.1. The derived
-rounding margin (certify/margin.py, prompt N4.1) replaces it; until then κ̂ is not a
-rounding-safe bound.
+Rounding: κ̂ is certify.margin.kappa_upper (derivation Step 7a): z_max / (m̂(1 − ρ)) evaluated
+exactly and rounded up, where m̂ = min fl(A z) and ρ bounds the rounding of A z relative to m̂. It
+is a guaranteed upper bound on ‖A⁻¹‖∞ for the stored A, and None when m̂ is within rounding of
+zero. It replaces the (1 + 1e-6) placeholder of CLAUDE.md §9.1.
 """
 
 from __future__ import annotations
@@ -18,9 +19,9 @@ import numpy as np
 import pyamg
 import scipy.sparse as sp
 
-__all__ = ["PLACEHOLDER_MARGIN", "kappa_from_z", "kappa_hat", "multigrid", "positive_z"]
+from certify.margin import kappa_upper, row_abs_sum_bound
 
-PLACEHOLDER_MARGIN = 1e-6  # CLAUDE.md §9.1; to be replaced by certify/margin.py
+__all__ = ["kappa_from_z", "kappa_hat", "multigrid", "positive_z"]
 
 
 def _check_square(A: sp.spmatrix) -> sp.csr_matrix:
@@ -54,7 +55,8 @@ def positive_z(
 
 
 def kappa_from_z(A: sp.spmatrix, z: np.ndarray) -> float | None:
-    """max(z) / min(Az) · (1 + placeholder margin), or None if z or Az has an entry <= 0."""
+    """Guaranteed κ̂ ≥ ‖A⁻¹‖∞ from z (K/W), or None if z ≤ 0 somewhere or min(Az) is not
+    certifiably positive (within rounding of zero)."""
     A = _check_square(A)
     z = np.asarray(z, dtype=np.float64)
     if z.shape != (A.shape[0],):
@@ -64,7 +66,7 @@ def kappa_from_z(A: sp.spmatrix, z: np.ndarray) -> float | None:
     Az = A @ z
     if z.min() <= 0 or Az.min() <= 0:
         return None
-    return float(z.max() / Az.min() * (1 + PLACEHOLDER_MARGIN))
+    return kappa_upper(row_abs_sum_bound(A), float(z.max()), float(Az.min()))
 
 
 def kappa_hat(

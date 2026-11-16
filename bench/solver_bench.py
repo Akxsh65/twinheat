@@ -60,6 +60,7 @@ from solvers.fvm import assemble_board, coefficients, solve_direct  # noqa: E402
 from solvers.pcg import jacobi as jacobi_precond  # noqa: E402
 from solvers.pcg import pcg  # noqa: E402
 from twinheat import spec as specmod  # noqa: E402
+from twinheat.gpu import device_name  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = specmod.load(ROOT / "config" / "spec_v2.yaml")
@@ -160,8 +161,7 @@ def gpu_model() -> str:
         from numba import config, cuda
         if config.ENABLE_CUDASIM or not cuda.is_available():
             return "none"
-        name = cuda.get_current_device().name
-        return name.decode() if isinstance(name, bytes) else str(name)
+        return device_name(cuda.get_current_device().name)
     except ImportError:
         return "none"
 

@@ -30,6 +30,7 @@ from data.raster import rasterise
 from data.sampler import sample_board
 from solvers.fvm import coefficients
 from twinheat import spec as specmod
+from twinheat.gpu import device_name
 
 ROOT = Path(__file__).resolve().parents[1]
 WARMUP, REPS = 10, 20
@@ -91,8 +92,7 @@ def main(argv: list[str] | None = None) -> None:
     n = spec.geometry.N.value
     rec = sample_board(0, "id")
     c = coefficients(spec, rasterise(rec, spec, n), rec["dirichlet_edges"])
-    gpu = cuda.get_current_device().name
-    gpu = gpu.decode() if isinstance(gpu, bytes) else str(gpu)
+    gpu = device_name(cuda.get_current_device().name)
     rows = []
     for dtype in DTYPES:
         item = np.dtype(dtype).itemsize

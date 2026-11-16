@@ -225,7 +225,7 @@ def run_pointwise() -> list[dict[str, Any]]:
             mu = gauss_seidel_smooth(A, b, xs + e0, sweeps, sweep="red_black", colours=col)
             err = np.abs(mu - xs)
             r = b - A @ mu
-            w = pointwise_bound(A, r, N_VCYCLES_POINTWISE, ml=ml, z_and_Az=pz)
+            w = pointwise_bound(A, b, mu, N_VCYCLES_POINTWISE, ml=ml, z_and_Az=pz)
             lo, hi = peak_interval(mu, w)
             rows.append({
                 "err_level_pct": level, "gs_sweeps": sweeps, "true_max_err_K": float(err.max()),

@@ -116,7 +116,9 @@ def numba_info() -> dict[str, Any]:
     }
     if info["cuda_available"]:
         names = [d.name for d in cuda.list_devices()]
-        info["devices"] = [n.decode() if isinstance(n, bytes) else str(n) for n in names]
+        # numba pads the name with NUL bytes (docs/compute.md); this script stays standalone
+        info["devices"] = [(n.decode() if isinstance(n, bytes) else str(n))
+                           .replace("\x00", "").strip() for n in names]
     return info
 
 
