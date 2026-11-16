@@ -15,7 +15,6 @@ Machines:
 
 | # | Prompt | Where | Needs first | Needed by | Status |
 |---|---|---|---|---|---|
-| 4 | N1.4 stencil bandwidth table (`stencil_bw.csv`) | rvcse A100 | the A100 datasheet peak bandwidth in `docs/refs/` | overdue (gate G1) | [ ] |
 | 9 | M2.3 U-Net and FNO+local baselines | rvcse GPU 0 / GPU 2 | nothing (running overnight from 2026-11-12) | week 5 | [ ] |
 | 10 | M2.3 E5 accuracy and the week-5 go/no-go | rvcse | the two baselines committed; `git pull` (e5.yaml lists `ood_bottom_chips`) | week 5 | [ ] |
 
@@ -28,6 +27,7 @@ on a clean tree. Every ensemble member's val relative L2 is above the 3 % target
 
 | Was | Prompt | Result |
 |---|---|---|
+| 4 | N1.4 stencil bandwidth table | `bench/results/stencil_bw.csv` on rvcse GPU 0, 2026-11-16: two runs agree within 2 % at B = 16 and 64; GPU tests 71 passed |
 | 11 | `scripts/check_gpu.py` on the A100 | all PASS on rvcse GPU 2, 2026-11-13: `docs/compute.md` |
 | 1 | N1.4 GPU tests | ran on the A100 (rvcse); two kernel fixes for a real-GPU compile merged (9434ef0, 7ad689a). Bandwidth table still open: section 4 |
 | 2 | N1.5 T4 rows | not needed (section A measured the oracle machine itself) |
