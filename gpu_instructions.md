@@ -18,6 +18,7 @@ Machines:
 | 9 | M2.3 U-Net and FNO+local baselines | rvcse GPU 0 / GPU 2 | nothing (running overnight from 2026-11-12) | week 5 | [ ] |
 | 10 | M2.3 E5 accuracy and the week-5 go/no-go | rvcse | the two baselines committed; `git pull` (e5.yaml lists `ood_bottom_chips`) | week 5 | [ ] |
 | 12 | M3.3 proposer trajectories (P1–P3 × 3 levels × 5 seeds) | rvcse GPU 0 | M3.3 merged; `ood_terciles.json` committed (step 1 of section 9) | N3.2 oracle labels, week 6 | [ ] |
+| 13 | M3.5 E8 feedback runs (G1 vs G5, H2) | rvcse GPU 0 + CPU pool | frozen.yaml committed (D4); N3.2 labels + `calibration.parquet` (section 10) | week 8 | [ ] |
 
 For 10: `python -m experiments.e5_accuracy --config experiments/configs/e5.yaml --data <dataset_v1>`
 on a clean tree. Every ensemble member's val relative L2 is above the 3 % target of CLAUDE.md §12
@@ -226,3 +227,33 @@ Send back (PR "M3.3 trajectories"): `<traj_dir>/manifest.json` copied to
 `nvidia-smi` GPU name. Copy `<traj_dir>` to Drive (CLAUDE.md §4: data stays out of git) and tell N
 its location: it is the input of N3.2 (oracle labels to 1e-8; labels keyed by `x_hash`, so
 repeated designs need one solve).
+
+---
+
+## 10 · M3.5 · gate experiments
+
+E7, E9, E14, E15 and E16 replay recorded trajectories and need no GPU: they run on any machine
+with the inputs folder (docs/gate_experiment_inputs.md). Only the p₀ calibration set (step 1) and
+E8 (step 3) need the ensemble.
+
+1. With the M3.3 trajectories, the p₀ calibration designs:
+   ```
+   python -m experiments.run_trajectories calib --seed 2026 --out <traj_dir>/calibration.parquet --device cuda:0
+   ```
+   Hand them to N with the trajectories: N3.2 labels both into `labels.parquet`.
+2. After `experiments/configs/frozen.yaml` is filled and committed (D4), and with a clean tree:
+   ```
+   python -m experiments.e7_validity    --inputs <inputs>
+   python -m experiments.e15_groups     --inputs <inputs>
+   python -m experiments.e16_active     --inputs <inputs>
+   python -m experiments.e14_cert_audit --inputs <inputs>    # needs N3.3's audit_traces.parquet
+   ```
+3. E8, online, needs the GPU for the ensemble and CPU for the exact solves of verified designs.
+   The number of solves is not measured yet; the AMG solve took about 1.6 s per board at 256²
+   on one rvcse core (D5):
+   ```
+   python -m experiments.e8_efficiency --inputs <inputs> --device cuda:0
+   ```
+
+Send back (PR "M3.5 results"): the `experiments/results/e*/` folders and the printed verdicts.
+

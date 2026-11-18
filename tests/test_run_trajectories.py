@@ -118,3 +118,22 @@ def test_shipped_config_matches_the_prompt_and_decisions() -> None:
     assert cfg["P2"]["steps"] == 1000
     assert (cfg["P3"]["starts"], cfg["P3"]["steps"]) == (64, 50)
     assert cfg["seeds"] == [0, 1, 2, 3, 4] and cfg["m_hot"] == 64 and cfg["N"] == 256
+
+
+def test_calibration_set_is_p0_draws_in_the_run_gates_format(setup, tmp_path) -> None:
+    from experiments import run_gates as RG
+
+    cfg, ens, ood, _ = setup
+    out = tmp_path / "calibration.parquet"
+    e = RT.run_calibration(cfg, 5, 2026, out, ensemble=ens, ood=ood, commit="abc1234")
+    assert e["rows"] == 5
+    d = pq.read_table(out).to_pydict()
+    for x, h in zip(d["design_vector"], d["x_hash"], strict=True):
+        assert P.x_hash(np.array(x)) == h
+        design_board(np.array(x))  # feasible: drawn from p0
+    labels = RG.Labels({h: 40.0 for h in d["x_hash"]}, {})
+    cal = RG.Calibration.from_parquet(out, labels)
+    assert cal.design_vector.shape == (5, P.DIM)
+    again = tmp_path / "again.parquet"
+    RT.run_calibration(cfg, 5, 2026, again, ensemble=ens, ood=ood, commit="abc1234")
+    assert pq.read_table(again).to_pydict()["x_hash"] == d["x_hash"]
