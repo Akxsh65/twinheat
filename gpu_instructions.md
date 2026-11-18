@@ -17,6 +17,7 @@ Machines:
 |---|---|---|---|---|---|
 | 9 | M2.3 U-Net and FNO+local baselines | rvcse GPU 0 / GPU 2 | nothing (running overnight from 2026-11-12) | week 5 | [ ] |
 | 10 | M2.3 E5 accuracy and the week-5 go/no-go | rvcse | the two baselines committed; `git pull` (e5.yaml lists `ood_bottom_chips`) | week 5 | [ ] |
+| 12 | M3.3 proposer trajectories (P1–P3 × 3 levels × 5 seeds) | rvcse GPU 0 | M3.3 merged; `ood_terciles.json` committed (step 1 of section 9) | N3.2 oracle labels, week 6 | [ ] |
 
 For 10: `python -m experiments.e5_accuracy --config experiments/configs/e5.yaml --data <dataset_v1>`
 on a clean tree. Every ensemble member's val relative L2 is above the 3 % target of CLAUDE.md §12
@@ -184,3 +185,44 @@ Not ready: needs M2.1 (inputs, normaliser, dataset loader) and M2.2's own code
 (`models/train_ensemble.py`, Kaggle notebook template). M2.2's DONE WHEN: train **member 1 first
 and measure its GPU-hours** before launching members 2–5; plan members 2–5 across rvcse and the
 three Kaggle accounts from that measurement. This section gets its commands when that code exists.
+
+---
+
+## 9 · M3.3 · proposer trajectories for the offline gate experiments
+
+What it does: runs P1 (tilted MCMC), P2 (simulated annealing) and P3 (batched gradient) at three
+aggressiveness levels and seeds 0–4 on the 5-member FNO ensemble (`experiments/run_trajectories.py`,
+settings in `experiments/configs/trajectories.yaml`). No gate and no coin is involved; the output
+is the trajectory set that N3.2 labels with oracle solves and every gate is then scored on.
+Expected size: P1 2,000 + P2 ≤ 1,000 + P3 3,200 proposals per run, 15 runs each, about 93k rows in
+45 parquet files (a few MB each). CPU (rasterising at 256²) dominates: about 0.16 s per proposal on
+a laptop core, so use several jobs.
+
+On a clean tree at the merge commit (`git status` empty), with the rvcse environment of section 0L:
+
+1. OOD terciles, once (validation split, about 1,000 boards):
+   ```
+   export CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0
+   python -m experiments.run_trajectories terciles --data <dataset_v1> --device cuda:0
+   ```
+   Commit `experiments/results/trajectories/ood_terciles.json` (PR), pull, and check `git status`
+   is empty again: the runs refuse a dirty tree.
+2. Smoke run, one file (a few minutes); note its wall-clock time:
+   ```
+   python -m experiments.run_trajectories run --proposer P2 --level 1 --seed 0 --out /tmp/traj_smoke --device cuda:0
+   ```
+3. All 45 runs:
+   ```
+   python -m experiments.run_trajectories all --out <traj_dir> --device cuda:0 --jobs 6
+   ```
+   Each job loads its own copy of the ensemble on the GPU. P3's memory per job (autograd through
+   5 members at 256², `grad_chunk: 4`) is not measured yet: watch `nvidia-smi` during the smoke
+   run of P3 (`run --proposer P3 --level 1 --seed 0`), and lower `--jobs` or `grad_chunk` if the
+   GPU runs out of memory. `--only P3` reruns one
+   proposer; the manifest keeps the other entries.
+
+Send back (PR "M3.3 trajectories"): `<traj_dir>/manifest.json` copied to
+`experiments/results/trajectories/manifest.json`, the printed row counts, the wall-clock time and
+`nvidia-smi` GPU name. Copy `<traj_dir>` to Drive (CLAUDE.md §4: data stays out of git) and tell N
+its location: it is the input of N3.2 (oracle labels to 1e-8; labels keyed by `x_hash`, so
+repeated designs need one solve).

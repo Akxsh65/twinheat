@@ -342,3 +342,28 @@ Consequences: more flagged designs and exact solves (H2, RQ2, H5); the report st
 that a single FNO+local (test rel. L2 4.78 %) outperformed the ensemble on test.
 Note: run_info.json reads 45913b6-dirty only because E5 took the commit after writing its own
 results into the repo (fixed on this branch); the tree was clean when the run started.
+
+## M3.3 proposer settings, 2026-11-18
+Values not fixed by CLAUDE.md or the M3.3 prompt, chosen by M (experiments/configs/trajectories.yaml);
+to be confirmed or changed when D4 freezes the gate hyperparameters, and before the trajectories
+are labelled:
+- P1 (tilted MCMC): 2,000 proposals per run, so P1 + P2 + P3 over 3 levels x 5 seeds is about
+  93k proposals, close to the ~1e5 oracle solves of CLAUDE.md 11.5. Lambda {1, 3, 10}/K and step
+  0.05 are the prompt's. The start is one draw from p0.
+- P2 (simulated annealing): 1,000 iterations (the prompt's), geometric cooling T_k = T0 *
+  0.01^(k/999); presets (T0, Gaussian step) = (3 K, 0.02), (1 K, 0.05), (0.3 K, 0.1) for levels 1-3.
+  An infeasible move is a rejected iteration, so a run has at most 1,000 proposals.
+- P3 (batched gradient): 64 starts x 50 rounds (the prompt's; round 0 proposes the starts);
+  x <- reflect(x - eta * g / max|g|), eta = 0.01 / 0.03 / 0.1 for levels 1-3; an infeasible step
+  is halved up to 5 times, then that start stays. g comes from a differentiable rasteriser
+  (models/diff_inputs.py: exact area fractions of the design-dependent channels) through the
+  ensemble mean, not from finite differences, which would need 37 exact rasterise + predict
+  passes per start-step (about 118k per run). The gradient only steers the search; every
+  proposed design is rasterised and predicted by the exact path.
+- All proposers: reflected moves on [0, 1]^36, p0 = uniform on the feasible cube (as the sampler's
+  design mode), seeds 0-4, one PCG64 stream per (seed, proposer, level).
+- Groups (gate/groups.py): OOD-score tercile cut points = 1/3 and 2/3 percentiles of the val split's
+  scores (experiments/results/trajectories/ood_terciles.json); edge group = predicted hotspot cell
+  centre within 5 mm of an edge (CLAUDE.md 8.1).
+- Trajectories store r_hot and sd_hot but not s: lambda and eps are D4 values.
+Owner: M; N to note the expected label count for N3.2.
