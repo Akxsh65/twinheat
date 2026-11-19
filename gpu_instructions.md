@@ -18,6 +18,7 @@ Machines:
 | 9 | M2.3 U-Net and FNO+local baselines | rvcse GPU 0 / GPU 2 | nothing (running overnight from 2026-11-12) | week 5 | [ ] |
 | 10 | M2.3 E5 accuracy and the week-5 go/no-go | rvcse | the two baselines committed; `git pull` (e5.yaml lists `ood_bottom_chips`) | week 5 | [ ] |
 | 12 | M3.3 proposer trajectories (P1–P3 × 3 levels × 5 seeds) | rvcse GPU 0 | M3.3 merged; `ood_terciles.json` committed (step 1 of section 9) | N3.2 oracle labels, week 6 | [ ] |
+| 14 | N3.2 oracle labels (~1e5 solves to 1e-8) | rvcse CPU pool + GPU 0 | M3.3 trajectories and `calibration.parquet` in one inputs folder (section 9, section 10 step 1) | M3.5 E7-E16, week 6 | [ ] |
 | 13 | M3.5 E8 feedback runs (G1 vs G5, H2) | rvcse GPU 0 + CPU pool | frozen.yaml committed (D4); N3.2 labels + `calibration.parquet` (section 10) | week 8 | [ ] |
 
 For 10: `python -m experiments.e5_accuracy --config experiments/configs/e5.yaml --data <dataset_v1>`
@@ -257,3 +258,30 @@ E8 (step 3) need the ensemble.
 
 Send back (PR "M3.5 results"): the `experiments/results/e*/` folders and the printed verdicts.
 
+## 11 · N3.2 · oracle labels
+
+Labels every unique design of the trajectories and the p₀ calibration set (CLAUDE.md §11.5):
+PyAMG-GMRES on the CPU cores plus one batched FP64 PCG worker on the GPU, all to a true relative
+residual of 1e-8. Inputs folder as docs/gate_experiment_inputs.md (`trajectories/` with its
+`manifest.json`, and `calibration.parquet`). From a clean tree on a tagged or merged commit:
+
+1. Label, in `tmux` (it resumes after a kill or a lost session: rerun the same command):
+   ```
+   CUDA_VISIBLE_DEVICES=0 python -m experiments.oracle_label label --inputs <inputs> --cpu-workers 60 --gpu
+   ```
+   Leave a few of the 64 logical cores free. It prints the count, rate and ETA every 256 boards.
+   About 93k + 1k designs; at D5's 1.6 s per board on one core, 60 workers give about 37 boards/s
+   before the GPU's share (an estimate from D5, not a result).
+2. Merge, cross-check 0.5 % with the other solver (|Δpeak| < 1e-4 K), report:
+   ```
+   python -m experiments.oracle_label finalise --inputs <inputs>
+   CUDA_VISIBLE_DEVICES=0 python -m experiments.oracle_label check --inputs <inputs> --cpu-workers 60 --gpu
+   python -m experiments.oracle_label report --inputs <inputs>
+   ```
+   (`all` runs the four in a row.) `check` raises if any re-solve disagrees: do not use the labels
+   then, and paste `<inputs>/oracle/cross_check.parquet` into the PR.
+3. GPU test, once: `pytest -m gpu tests/test_oracle_label.py -s` (CPU and GPU agree on 50 boards at
+   256², < 1e-4 K; prints the worst difference).
+
+Send back (PR "N3.2 labels"): `experiments/oracle_report.md` (commit it; status must read DONE),
+the pytest log of step 3, and the location of `<inputs>/labels.parquet` (it is not committed).

@@ -26,6 +26,12 @@ One row per **unique** `x_hash`, covering every trajectory file and `calibration
 Rebuild each board with `data/sampler.design_board(design_vector)` and rasterise at N = 256. A
 duplicate `x_hash` with two different values is refused.
 
+`experiments/oracle_label.py` writes this file (`label`, then `finalise`), with these extra
+columns, which run_gates ignores: `source` (first input file the design appears in),
+`argmax_layer`, `argmax_y`, `argmax_x`, `iters`, `solver` (`pyamg_gmres` | `pcg_linez`),
+`device`, `batch`, `wall_s`, `relres`, `energy_balance`, `theta_sha256` (SHA-256 of θ as
+little-endian float32 `[4, N, N]`), `worker`. `iters_full` is null there (it needs μ; N3.3).
+
 ## `audit_traces.parquet` (N3.3, E14 only)
 
 One row per design that is audited in some run. Simplest is one row for every design in the
