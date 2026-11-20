@@ -148,7 +148,10 @@ def test_w_interval_matches_pointwise_and_combined_is_the_intersection():
                              reason="pyamg cannot load here (needed by certify/pointwise.py)")
     A, c, b, theta, k = board(1)
     mu = emulated(theta, 1)
-    w = pw.pointwise_bound(A, b.ravel(), mu.ravel()).reshape(mu.shape)
+    # z = A⁻¹1 by a direct solve: on this board 3 V-cycles give no z with A z > 0, and then
+    # pointwise_bound (rightly) refuses to certify
+    z = spla.spsolve(A.tocsc(), np.ones(A.shape[0]))
+    w = pw.pointwise_bound(A, b.ravel(), mu.ravel(), z_and_Az=(z, A @ z)).reshape(mu.shape)
     lo, hi, method = PI.peak_interval(mu, c, b, w=w)
     assert method == "pointwise" and (lo, hi) == pw.peak_interval(mu.ravel(), w.ravel())
     lk, hk, _ = PI.peak_interval(mu, c, b, kappa_hat=k)
