@@ -1,0 +1,37 @@
+# Proposer trajectories for the offline gate experiments (M3.3; CLAUDE.md §11.2, §11.5).
+# experiments/run_trajectories.py refuses to run if this file has uncommitted changes.
+#
+# Fixed by CLAUDE.md or the M3.3 prompt: P1 lambda {1, 3, 10} per K and step 0.05; P2 1,000 steps;
+# P3 64 starts x 50 steps; 5 seeds; m = 64 hot cells (§8.1 default); N = 256 (§7.3).
+# M's choices of 18 Nov 2026 (docs/decisions.md "M3.3 proposer settings"), to be frozen under D4:
+# P1 proposals per run, P2 presets and cooling, P3 step sizes, halvings.
+# Not set here: lambda, eps of the scale s (D4). Trajectories store r_hot and sd_hot; s is formed
+# when the gates are scored.
+
+registry: models/registry.json
+norm_stats: models/norm_stats.json
+stage: ft256
+ood_score: experiments/results/e5/ood_score.json
+ood_terciles: experiments/results/trajectories/ood_terciles.json
+N: 256
+m_hot: 64
+eval_batch: 16
+seeds: [0, 1, 2, 3, 4]
+
+P1:                         # tilted MCMC, p ∝ p0 exp(-lambda T_peak)
+  lambda_per_K: [1.0, 3.0, 10.0]   # levels 1, 2, 3
+  step: 0.05
+  proposals: 2000
+P2:                         # simulated annealing, geometric cooling T0 -> T0 * T_end_ratio
+  steps: 1000
+  T_end_ratio: 0.01
+  presets:                  # levels 1, 2, 3
+    - {T0_K: 3.0, step: 0.02}
+    - {T0_K: 1.0, step: 0.05}
+    - {T0_K: 0.3, step: 0.1}
+P3:                         # batched projected gradient through models/diff_inputs.py
+  starts: 64
+  steps: 50
+  eta: [0.01, 0.03, 0.1]    # levels 1, 2, 3; x <- x - eta * g / max|g|
+  halvings: 5
+  grad_chunk: 4             # designs per autograd pass (GPU memory)
