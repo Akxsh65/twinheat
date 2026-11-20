@@ -392,3 +392,20 @@ Open, for M before E7 is reported: the Lemma 1 bound is vacuous at the trajector
 (T = 1,000-3,200). For example, T = 2,000 with p = 0.1 gives about 1.4 if gamma = 0.01. H1's
 criterion "M1 <= alpha + slack" is then trivially met by G5 and cannot be exceeded by G1, G2 or G4.
 
+
+## N3.2 oracle settings, proposed 2026-11-19 (N to confirm by approving the PR)
+experiments/oracle_label.py. Choices not fixed by CLAUDE.md or the N3.2 prompt:
+- PyAMG strength threshold theta = 0.1 (solvers/amg_baseline.py leaves it to N). Speed only: the
+  stop is the true relative residual <= 1e-8 whatever theta is, and every label is re-checked
+  (relres, energy balance <= 0.1 %). Median 1.62 s vs 4.55 s per board in solver_table_v1.csv (D5).
+  `--amg-strength-theta pyamg` keeps PyAMG's default instead; one label set uses one setting.
+- Cold start (x0 = 0) for both solvers, and no envelope rescale: the label is the exact discrete
+  solution of the very board design_board(x) builds, which is what the surrogate predicted.
+- Dedupe key: x_hash (SHA-256 of the design vector). design_board is deterministic in x, so this
+  is the board-record hash up to the record's `seed` field, which does not change the physics.
+- GPU worker: FP64 batched PCG with the line-z block-Jacobi preconditioner (as data/generate.py),
+  one GPU per labeller (pick it with CUDA_VISIBLE_DEVICES), batch 64 (prompt).
+- Cross-check sample: ceil(0.5 % of the labels), drawn with PCG64(seed 0) over the sorted x_hashes;
+  an AMG label is re-solved by PCG (on the GPU if --gpu, else NumPy on the CPU), a PCG label by AMG.
+- iters_full (PCG iterations from the ensemble mean, H7's baseline) is left null: it needs mu,
+  so it comes with the N3.3 audit traces, which already warm-start from mu.
