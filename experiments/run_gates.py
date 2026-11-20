@@ -50,6 +50,7 @@ import numpy as np
 import pyarrow.parquet as pq
 import yaml
 
+from certify.peak_interval import decide, score_interval
 from gate import groups as G
 from gate.aci_audit import AuditedACIGate
 from gate.active_audit import ActiveAuditGate
@@ -324,29 +325,23 @@ def lemma1_bound(*, alpha: float, gamma: float, p: float, T: int, delta: float) 
     return alpha + lemma1_slack(alpha=alpha, gamma=gamma, p=p, T=T, delta=delta)
 
 
-def _score_interval(peak_hat: float, lo: float, hi: float, s: float) -> tuple[float, float]:
-    s_hi = max(abs(peak_hat - lo), abs(peak_hat - hi)) / s
-    s_lo = 0.0 if lo <= peak_hat <= hi else min(abs(peak_hat - lo), abs(peak_hat - hi)) / s
-    return s_lo, s_hi
-
-
 def certified_audit(peak_hat: float, s: float, q: float, eps_S: float, trace: Trace,
                     oracle: float) -> tuple[float, float, int, str]:
     """(T⁻, T⁺, iterations, stop reason) of an audit replayed from its trace (Lemma 1′, §8.3):
     stop at the first check whose score interval [S⁻, S⁺] lies entirely ≤ q or > q
-    ("decided"), or is narrower than ε_S ("width"), else at the last check ("end"). Every
-    check up to the stop must contain the oracle peak (B7)."""
+    ("decided"), or is narrower than ε_S ("width"), else at the last check ("end"). The score
+    interval and the rule are certify/peak_interval's, so the replay stops where a live
+    audit_until_decided would. Every check up to the stop must contain the oracle peak (B7)."""
     for k in range(len(trace.iters)):
         lo, hi = float(trace.T_lo[k]), float(trace.T_hi[k])
         if not lo <= oracle <= hi:
             raise CertificateViolation(f"B7 violated: check {k} interval [{lo}, {hi}] K does not "
                                        f"contain the oracle peak {oracle} K")
-        s_lo, s_hi = _score_interval(peak_hat, lo, hi, s)
+        s_lo, s_hi = score_interval(peak_hat, lo, hi, s)
         it = int(trace.iters[k])
-        if s_hi <= q or s_lo > q:
-            return lo, hi, it, "decided"
-        if s_hi - s_lo < eps_S:
-            return lo, hi, it, "width"
+        why = decide(s_lo, s_hi, q, eps_S)
+        if why is not None:
+            return lo, hi, it, "width" if why == "width" else "decided"
     return lo, hi, it, "end"
 
 

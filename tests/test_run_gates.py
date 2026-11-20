@@ -188,8 +188,11 @@ def test_certified_audit_stops_when_decided_and_counts_iterations() -> None:
     # q = 0.5: decided once S_lo > 0.5, i.e. T_hi < 49.5 -> check 3 (T_hi = 49.3)
     lo, hi, iters, why = RG.certified_audit(50.0, 1.0, 0.5, 0.01, trace, oracle=49.0)
     assert (lo, hi, iters, why) == (48.6, 49.3, 15, "decided")
-    # q = 3: S_hi <= 3 once max(|50 - lo|, |50 - hi|) <= 3 -> check 2 (lo 47, hi 52: S_hi = 3)
-    assert RG.certified_audit(50.0, 1.0, 3.0, 0.01, trace, oracle=49.0)[2:] == (10, "decided")
+    # q = 3.001: S_hi <= q once max(|50 - lo|, |50 - hi|) <= 3 -> check 2 (lo 47, hi 52: S_hi = 3)
+    assert RG.certified_audit(50.0, 1.0, 3.001, 0.01, trace, oracle=49.0)[2:] == (10, "decided")
+    # at the exact tie S_hi = q = 3, S_hi is rounded up (certify/peak_interval.score_interval),
+    # so the conservative rule waits for the next check
+    assert RG.certified_audit(50.0, 1.0, 3.0, 0.01, trace, oracle=49.0)[2:] == (15, "decided")
     # q = 1.0 sits on the true score: never decided, the width rule ends it
     assert RG.certified_audit(50.0, 1.0, 1.0, 0.05, trace, oracle=49.0)[2:] == (20, "width")
     assert RG.certified_audit(50.0, 1.0, 1.0, 0.0, trace, oracle=49.0)[2:] == (20, "end")

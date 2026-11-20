@@ -51,6 +51,13 @@ than ε_S. That way one trace serves every gate and every ε_S. **Every check mu
 narrower than the oracle's own accuracy, say so in the PR. The comparison is exact, with no
 tolerance.
 
+`certify/peak_interval.audit_trace(mu, coeffs, b, kappa_hat, check_every)` computes one row (FP64
+PCG from μ, the Lemma 2(b) interval at iterate 0 and every `check_every` iterations, to 1e-8 or
+`maxit`). The replay uses the same `score_interval` and `decide` as the live
+`audit_until_decided`, so both stop at the same check with the same interval (tested). The cap
+`maxit` is D14's (open). Writing the parquet needs μ from the ensemble (GPU host); that script is
+not written yet.
+
 ## `calibration.parquet` (M)
 
 1,000 fresh draws from p₀ (decision 2026-11-18), with the columns `x_hash`, `design_vector`,
