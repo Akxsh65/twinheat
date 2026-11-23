@@ -19,8 +19,11 @@ stopping and no envelope rescale: the label is the exact discrete solution of th
 surrogate predicted. Workers pull from one queue:
   * K CPU processes, PyAMG Ruge–Stüben + GMRES (solvers/amg_baseline.py), one thread each
     (OMP/OpenBLAS/MKL_NUM_THREADS=1, set before they start);
-  * optionally one GPU process (--gpu): batched FP64 PCG, line-z block-Jacobi preconditioned
-    (solvers/pcg.py, as data/generate.py), up to 64 boards per launch.
+  * optionally GPU processes: batched FP64 PCG, line-z block-Jacobi preconditioned
+    (solvers/pcg.py, as data/generate.py), up to 64 boards per launch. --gpu adds one on the
+    visible GPU; --gpus 0,2 --gpu-workers-per-gpu K adds K per listed GPU, each worker started
+    with CUDA_VISIBLE_DEVICES set to its GPU (rasterising and assembling 64 boards on the
+    worker's one CPU core dominates a launch, so several workers per GPU keep it busy).
 Each label is checked: finite θ, relres ≤ 1e-8, energy-balance error ≤ 0.1 % (B2). Results are
 appended to DIR/oracle/parts/<source>.<seq>.parquet every --flush-every boards (atomic rename), so a
 kill loses at most the unflushed boards; rerunning skips every labelled x_hash. A lock file stops
@@ -59,7 +62,7 @@ import subprocess
 import sys
 import time
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -411,16 +414,28 @@ def _worker(kind: str, task_q, result_q, N: int, strength_theta: float | None, d
             return
 
 
+def gpu_assignment(pcg_workers: int, gpus: Sequence[str] | None) -> list[str | None]:
+    """CUDA_VISIBLE_DEVICES for each GPU worker: round-robin over `gpus`, or None (inherit)."""
+    if not gpus:
+        return [None] * pcg_workers
+    ids = [str(g).strip() for g in gpus]
+    if any(not g.isdigit() for g in ids) or len(set(ids)) != len(ids):
+        raise OracleError(f"gpus must be distinct GPU indices, got {list(gpus)!r}")
+    return [ids[i % len(ids)] for i in range(pcg_workers)]
+
+
 def _run_pool(tasks: list[tuple], *, amg_workers: int, pcg_workers: int, pcg_device: str,
               batch: int, N: int, strength_theta: float | None, shared: bool,
-              on_rows: Callable[[list[dict]], None]) -> None:
+              on_rows: Callable[[list[dict]], None],
+              gpus: Sequence[str] | None = None) -> None:
     """Solve every task. tasks: (x_hash, source, x, want) with want "amg" | "pcg" (ignored when
-    shared: every worker pulls from one queue)."""
+    shared: every worker pulls from one queue). gpus: GPU indices the GPU workers are spread
+    over (each worker sees only its own as device 0); None: they share the visible GPU."""
     if amg_workers < 0 or pcg_workers < 0 or amg_workers + pcg_workers == 0:
         raise OracleError(f"need at least one worker (cpu {amg_workers}, pcg {pcg_workers})")
-    if pcg_device == "gpu" and pcg_workers > 1:
-        raise OracleError("one GPU worker per process tree; pick the GPU with "
-                          "CUDA_VISIBLE_DEVICES")
+    if gpus and pcg_device != "gpu":
+        raise OracleError("gpus is only meaningful for GPU workers (pcg_device 'gpu')")
+    visible = gpu_assignment(pcg_workers, gpus)
     if not (isinstance(batch, int) and batch >= 1):
         raise OracleError(f"batch must be an int >= 1, got {batch!r}")
     ctx = mp.get_context("spawn")
@@ -442,8 +457,18 @@ def _run_pool(tasks: list[tuple], *, amg_workers: int, pcg_workers: int, pcg_dev
             procs.append(ctx.Process(target=_worker, name=f"pcg{i}", daemon=True,
                                      args=("pcg", q_pcg, rq, N, strength_theta, pcg_device,
                                            batch)))
-        for p in procs:
-            p.start()
+        old_cvd = os.environ.get("CUDA_VISIBLE_DEVICES")
+        try:
+            for p in procs:
+                k = int(p.name[3:]) if p.name.startswith("pcg") else None
+                if k is not None and visible[k] is not None:  # read by the child's CUDA init
+                    os.environ["CUDA_VISIBLE_DEVICES"] = visible[k]
+                p.start()
+        finally:
+            if old_cvd is None:
+                os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+            else:
+                os.environ["CUDA_VISIBLE_DEVICES"] = old_cvd
     finally:
         for v, val in old.items():
             if val is None:
@@ -535,11 +560,12 @@ def _sessions(root: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in p.read_text(encoding="utf-8").splitlines() if line]
 
 
-def _hardware(cpu_workers: int, pcg_workers: int, pcg_device: str) -> dict[str, Any]:
+def _hardware(cpu_workers: int, pcg_workers: int, pcg_device: str,
+              gpus: Sequence[str] | None = None) -> dict[str, Any]:
     return {"host": platform.node(), "cpu_model": _cpu_model(), "logical_cpus": os.cpu_count(),
             "gpu_model": _gpu_name() if pcg_workers and pcg_device == "gpu" else None,
             "cpu_workers": cpu_workers, "pcg_workers": pcg_workers, "pcg_device": pcg_device,
-            "python": platform.python_version()}
+            "gpus": list(gpus) if gpus else None, "python": platform.python_version()}
 
 
 # ------------------------------------------------------------------------------- commands
@@ -547,7 +573,7 @@ def _hardware(cpu_workers: int, pcg_workers: int, pcg_device: str) -> dict[str, 
 def label(root: Path, *, N: int | None = None, cpu_workers: int, pcg_workers: int = 0,
           pcg_device: str = "gpu", gpu_batch: int = GPU_BATCH, flush_every: int = 256,
           strength_theta: float | None = DEFAULT_STRENGTH_THETA,
-          progress: bool = False) -> dict[str, Any]:
+          progress: bool = False, gpus: Sequence[str] | None = None) -> dict[str, Any]:
     """Label every unique design of DIR that has no label yet; returns the session record.
     progress: print the count, rate and ETA at every flush."""
     root = Path(root)
@@ -593,7 +619,7 @@ def label(root: Path, *, N: int | None = None, cpu_workers: int, pcg_workers: in
                 flush()
 
         session = {"kind": "label", "start": _now(), **_commit(), **meta,
-                   "hardware": _hardware(cpu_workers, pcg_workers, pcg_device),
+                   "hardware": _hardware(cpu_workers, pcg_workers, pcg_device, gpus),
                    "gpu_batch": gpu_batch, "unique_designs": len(designs),
                    "already_labelled": len(have), "inputs": info}
         status = "error"
@@ -601,7 +627,8 @@ def label(root: Path, *, N: int | None = None, cpu_workers: int, pcg_workers: in
             if todo:
                 _run_pool(todo, amg_workers=cpu_workers, pcg_workers=pcg_workers,
                           pcg_device=pcg_device, batch=gpu_batch, N=N,
-                          strength_theta=strength_theta, shared=True, on_rows=on_rows)
+                          strength_theta=strength_theta, shared=True, on_rows=on_rows,
+                          gpus=gpus)
             status = "complete"
         except KeyboardInterrupt:
             status = "interrupted"
@@ -644,7 +671,8 @@ def sample_size(n: int, fraction: float) -> int:
 
 def cross_check(root: Path, *, fraction: float = CROSS_FRACTION, seed: int = 0,
                 cpu_workers: int, pcg_workers: int = 0, pcg_device: str = "gpu",
-                gpu_batch: int = GPU_BATCH) -> dict[str, Any]:
+                gpu_batch: int = GPU_BATCH, gpus: Sequence[str] | None = None
+                ) -> dict[str, Any]:
     """Re-solve a seeded random `fraction` of labels.parquet with the other solver."""
     root = Path(root)
     path = root / "labels.parquet"
@@ -671,7 +699,7 @@ def cross_check(root: Path, *, fraction: float = CROSS_FRACTION, seed: int = 0,
     t0 = time.perf_counter()
     _run_pool(tasks, amg_workers=cpu_workers, pcg_workers=pcg_workers, pcg_device=pcg_device,
               batch=gpu_batch, N=int(meta["N"]), strength_theta=meta["strength_theta"],
-              shared=False, on_rows=on_rows)
+              shared=False, on_rows=on_rows, gpus=gpus)
     elapsed = time.perf_counter() - t0
     out = []
     for i in pick:
@@ -702,7 +730,7 @@ def cross_check(root: Path, *, fraction: float = CROSS_FRACTION, seed: int = 0,
     _log_session(root, {"kind": "check", "start": res["date"], "elapsed_s": elapsed,
                         "status": "complete", "labelled_this_run": 0, "checked": k,
                         "busy_s": busy, **_commit(),
-                        "hardware": _hardware(cpu_workers, pcg_workers, pcg_device)})
+                        "hardware": _hardware(cpu_workers, pcg_workers, pcg_device, gpus)})
     if n_fail:
         raise OracleError(f"cross-check failed: {n_fail} of {k} labels differ from the other "
                           f"solver by >= {CROSS_TOL_K} K (max {d.max():.3e} K); see "
@@ -723,7 +751,7 @@ def _hours(sessions: list[dict], kind: str | None = None) -> dict[str, float]:
         h["cpu_core"] += cores * e
         h["cpu_busy"] += s["busy_s"]["cpu"] / 3600
         if hw["pcg_workers"] and hw["pcg_device"] == "gpu":
-            h["gpu"] += hw["pcg_workers"] * e
+            h["gpu"] += len(hw.get("gpus") or [None]) * e  # GPUs held, not workers
             h["gpu_busy"] += s["busy_s"]["gpu"] / 3600
     return h
 
@@ -851,8 +879,12 @@ def main(argv: list[str] | None = None) -> None:
                        help=f"PyAMG processes, one core each (default {default_cpu})")
         g = p.add_mutually_exclusive_group()
         g.add_argument("--gpu", action="store_true", help="add one batched-PCG GPU worker")
+        g.add_argument("--gpus", type=lambda v: [x for x in v.split(",") if x],
+                       help="spread GPU workers over these GPU indices, e.g. 0,2")
         g.add_argument("--pcg-cpu-workers", type=int, default=0,
                        help="PCG workers on the CPU (no GPU)")
+        p.add_argument("--gpu-workers-per-gpu", type=int, default=1,
+                       help="GPU workers per GPU listed in --gpus")
         p.add_argument("--gpu-batch", type=int, default=GPU_BATCH)
     for c in ("label", "all"):
         ps[c].add_argument("--N", type=int, default=None, help="grid (default spec_v2, 256)")
@@ -867,6 +899,10 @@ def main(argv: list[str] | None = None) -> None:
     a = ap.parse_args(argv)
 
     def workers() -> dict[str, Any]:
+        if a.gpus:
+            return {"cpu_workers": a.cpu_workers, "gpus": a.gpus, "pcg_device": "gpu",
+                    "pcg_workers": len(a.gpus) * a.gpu_workers_per_gpu,
+                    "gpu_batch": a.gpu_batch}
         return {"cpu_workers": a.cpu_workers, "pcg_workers": 1 if a.gpu else a.pcg_cpu_workers,
                 "pcg_device": "gpu" if a.gpu else "cpu", "gpu_batch": a.gpu_batch}
 
