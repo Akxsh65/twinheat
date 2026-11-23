@@ -217,6 +217,23 @@ def test_resume_after_kill_no_duplicates_or_gaps(tmp_path):
         assert abs(peak[x_hash(x)] - r["oracle_peak"]) < 1e-9
 
 
+def test_gpu_assignment_spreads_workers_round_robin():
+    assert OL.gpu_assignment(4, ["0", "2"]) == ["0", "2", "0", "2"]
+    assert OL.gpu_assignment(2, None) == [None, None]
+    for bad in (["0", "0"], ["gpu0"]):
+        with pytest.raises(OL.OracleError, match="distinct GPU indices"):
+            OL.gpu_assignment(2, bad)
+
+
+def test_gpu_hours_count_gpus_not_workers():
+    s = {"kind": "label", "elapsed_s": 3600.0, "busy_s": {"cpu": 0.0, "gpu": 0.0},
+         "hardware": {"cpu_workers": 8, "pcg_workers": 16, "pcg_device": "gpu",
+                      "gpus": ["0", "2"]}}
+    old = {**s, "hardware": {**s["hardware"], "pcg_workers": 1, "gpus": None}}
+    assert OL._hours([s])["gpu"] == 2.0 and OL._hours([old])["gpu"] == 1.0
+    assert OL._hours([s])["cpu_core"] == 8.0
+
+
 def test_lock_refuses_a_second_labeller(tmp_path):
     with OL.RunLock(tmp_path / ".lock"):
         with pytest.raises(OL.OracleError, match="another labeller"):
