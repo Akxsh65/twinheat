@@ -116,3 +116,17 @@ def test_protected_and_training_splits_refused(split: str) -> None:
         E.check_split(split)
     E.check_split("test")
     E.check_split("ood_3oz")
+
+
+def test_cg_z_gives_a_valid_kappa_where_vcycles_do_not() -> None:
+    # 4-layer board without a heat-sunk edge, N = 64: the AMG-CG kappa is a true and tight
+    # upper bound on ||A^-1||_inf (A^-1 >= 0, so the norm is max of A^-1 1, by a direct solve)
+    from certify.kappa import kappa_hat
+    rec = next(r for r in (sample_board(s, "id") for s in range(40)) if not r["dirichlet_edges"])
+    r = rasterise(rec, SPEC, 64)
+    A, _ = assemble_board(SPEC, r, rec["dirichlet_edges"])
+    exact = float(spla.spsolve(A.tocsc(), np.ones(A.shape[0])).max())
+    k = kappa_hat(A, 60, accel="cg")
+    assert k is not None and exact <= k <= 1.05 * exact
+    with pytest.raises(ValueError, match="accel"):
+        kappa_hat(A, 3, accel="gmres")

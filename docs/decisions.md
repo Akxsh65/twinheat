@@ -446,3 +446,23 @@ and informative only at p = 0.2 (0.50-0.87), so the report gives H1 at p = 0.2 a
 headline p = 0.1 and says the p = 0.1 bound is vacuous. The tighter bound (4) with C+ and the
 in-expectation form (report/lemma1_review.md §3) need N's sign-off (N3.1) before they are used
 in a verdict.
+
+## kappa-hat z by AMG-CG on the 4-layer board, proposed 2026-11-23 (N to confirm)
+- **Finding:** the E13 smoke run at 7710fb8 gave no certificate on any of 5 test boards. CLAUDE.md
+  §8.4 builds z ≈ A⁻¹1 from 3 V-cycles; on the 256² × 4 board without a heat-sunk edge the
+  Ruge–Stüben V-cycle barely reduces the near-constant mode of A z = 1 (A⁻¹1 ≈ 1.5e6 K/W): on
+  two laptop test boards, min(A z) stayed < 0 in about 92k–99k of 262k cells after 3 to 40
+  cycles, so no κ̂ exists. The §8.6 prototype passed with 3 cycles because it ran on the 64²
+  single-layer plate.
+- **Proposal:** E13 (and every caller that opts in) computes z with CG preconditioned by the same
+  V-cycle (`certify.kappa.positive_z(..., accel="cg")`), 60 iterations. In the same laptop check
+  this gave min(A z) between 0.98 and 1.0000 and κ̂ within about 2 % of max z on three boards,
+  in about 5 s per board. Rigour is unchanged: Lemma 2(a) holds for any z > 0 with A z > 0,
+  and both are still checked in FP64 with the derived margin (certify/margin.py) before κ̂ is
+  used. The default of positive_z stays 3 V-cycles (§8.4); E13 states its choice in
+  `--kappa-accel` / `--kappa-iters` and in every output footer.
+- **D10 (production PCG preconditioner), proposed:** line-z block Jacobi
+  (`solvers/pcg.line_z_block_jacobi`), the one data/generate.py and the oracle GPU worker use. It
+  is the block-diagonal part of the SPD A (exact inverse of each column's 4 × 4 tridiagonal
+  block), so it is SPD as PCG requires (§18.5). E13 passes `--precond linez`.
+- **Owner:** N.
