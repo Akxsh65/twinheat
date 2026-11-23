@@ -1,0 +1,64 @@
+source: Isaac Gibbs and Emmanuel J. Candès, "Adaptive Conformal Inference Under Distribution Shift", arXiv 2106.00170v3 [stat.ME], 28 Oct 2021 (NeurIPS 2021)
+file: references/03_uncertainty_conformal/all2_Gibbs_AdaptiveConformalInference.pdf
+location: Sec. 2 setting and update (2) (p. 3); Sec. 4.1 standing assumptions, Lemma 4.1, Proposition 4.1 and their proofs (p. 6). Printed page = PDF page.
+used by: Lemma 1 step (2) (CLAUDE.md §8.2, §18.1); gate/aci_audit.py, gate/active_audit.py; report/lemma1_review.md §3; report/lemma1_check_n31.md
+notation: subscripts after "_". 1[·] = indicator. N = natural numbers. Name clash: the paper's err_t is our err_k on audited steps; its α_t is our α_k.
+transcribed by Claude from the PDF the team provided: text extracted with pdftotext, every formula set from the rendered page images (the extraction drops Greek letters); checked against the PDF by: (reviewer of this PR)
+
+Everything between the ==== lines is the paper's text, kept word for word. Notes marked [TwinHeat] are ours and are not in the paper.
+
+==================================================================== Sec. 2 (p. 3)
+
+[...] we assume that at each time t we are given a fitted score function S_t(·) and corresponding quantile function Q̂_t(·). We define the realized miscoverage rate of the prediction set Ĉ_t(α) := {y : S_t(X_t, y) ≤ Q̂_t(1 − α)} as
+
+    M_t(α) := P(S_t(X_t, Y_t) > Q̂_t(1 − α)),
+
+where the probability is over the test point (X_t, Y_t) as well as the data used to fit S_t(·) and Q̂_t(·).
+
+[...]
+
+To perform this calibration we will use a simple online update. This update proceeds by examining the empirical miscoverage frequency of the previous prediction sets and then decreasing (resp. increasing) our estimate of α*_t if the prediction sets were historically under-covering (resp. over-covering) Y_t. In particular, let α_1 denote our initial estimate (in our experiments we will choose α_1 = α). Recursively define the sequence of miscoverage events
+
+    err_t := 1, if Y_t ∉ Ĉ_t(α_t),
+             0, otherwise,          where Ĉ_t(α_t) := {y : S_t(X_t, y) ≤ Q̂_t(1 − α_t)}.
+
+Then, fixing a step size parameter γ > 0 we consider the simple online update
+
+    α_{t+1} := α_t + γ(α − err_t).                                                  (2)
+
+We refer to this algorithm as adaptive conformal inference.
+
+==================================================================== Sec. 4.1 (p. 6)
+
+4.1 Distribution-free results
+
+In this section we outline the theoretical coverage guarantees of adaptive conformal inference. We will assume throughout that with probability one α_1 ∈ [0, 1] and Q̂_t is non-decreasing with Q̂_t(x) = −∞ for all x < 0 and Q̂_t(x) = ∞ for all x > 1. Our first result shows that over long time intervals adaptive conformal inference obtains the correct coverage frequency irrespective of any assumptions on the data-generating distribution.
+
+Lemma 4.1 With probability one we have that ∀t ∈ N, α_t ∈ [−γ, 1 + γ].
+
+Proof: Assume by contradiction that with positive probability {α_t}_{t∈N} is such that inf_t α_t < −γ (the case where sup_t α_t > 1 + γ is identical). Note that sup_t |α_{t+1} − α_t| = sup_t γ|α − err_t| < γ. Thus, with positive probability we may find t ∈ N such that α_t < 0 and α_{t+1} < α_t. However,
+
+    α_t < 0 ⟹ Q̂_t(1 − α_t) = ∞ ⟹ err_t = 0 ⟹ α_{t+1} = α_t + γ(α − err_t) ≥ α_t
+
+and thus P(∃t such that α_{t+1} < α_t < 0) = 0. We have reached a contradiction. □
+
+Proposition 4.1 With probability one we have that for all T ∈ N,
+
+    | (1/T) Σ_{t=1}^{T} err_t − α | ≤ (max{α_1, 1 − α_1} + γ) / (Tγ).               (5)
+
+In particular, lim_{T→∞} (1/T) Σ_{t=1}^{T} err_t =(a.s.) α.
+
+Proof: By expanding the recursion defined in (2) and applying Lemma 4.1 we find that
+
+    [−γ, 1 + γ] ∋ α_{T+1} = α_1 + Σ_{t=1}^{T} γ(α − err_t).
+
+Rearranging this gives the result. □
+
+Proposition 4.1 puts no constraints on the data generating distribution.
+
+====================================================================
+
+[TwinHeat] Reading notes (UNSURE until the reviewer confirms against the PDF):
+- The proof of Lemma 4.1 uses only: err_t ∈ {0, 1}; α_t < 0 ⟹ err_t = 0; and, for the "identical" case, α_t > 1 ⟹ Q̂_t(1 − α_t) = −∞ ⟹ Ĉ_t = ∅ ⟹ err_t = 1; together with α ∈ (0, 1), which makes γ|α − err_t| < γ. Proposition 4.1 then needs only Lemma 4.1 and the recursion (2). The statement itself is about ACI's own err_t; applying the argument to another 0/1 sequence with the same two boundary properties is an application of the proof, not of the statement.
+- The convention fixes Q̂_t(x) only for x < 0 and x > 1. At α_t = 0 or α_t = 1 exactly the paper says nothing, and neither proof needs it (both use strict inequalities).
+- The paper's experiments use γ = 0.005 (Sec. 2.1, p. 4). That is not a TwinHeat value (D4).
