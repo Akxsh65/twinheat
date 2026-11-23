@@ -1,0 +1,16 @@
+{
+  "schema": "twinheat-ood-terciles/1",
+  "cuts": [
+    4.149211691866599,
+    5.57051661616321
+  ],
+  "percentiles": [
+    33.333333333333336,
+    66.66666666666667
+  ],
+  "split": "val",
+  "n_val": 1000,
+  "ood_score_sha256": "419b5edbcab0d1741b2ee82e268e56da1b7fd6b2f5b11acedc6eeee26fe316bc",
+  "dataset_hash": "542f3ba0a8e5087f411469acf96bc6de0bff61d504ccb01d905ce532cb2f7e9c",
+  "commit": "18a6e02"
+}
