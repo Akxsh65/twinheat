@@ -315,9 +315,11 @@ def test_frozen_guard(tmp_path: Path) -> None:
         RG.check_frozen(repo / "nope.yaml", repo=repo)
 
 
-def test_shipped_template_is_refused_until_filled() -> None:
-    with pytest.raises(RG.FrozenConfigError, match="null"):
-        RG.validate_frozen(RG.load_yaml(RG.DEFAULT_FROZEN))
+def test_shipped_frozen_config_is_complete() -> None:
+    # D4 is decided (docs/decisions.md, 2026-11-23): the shipped frozen.yaml must be complete and
+    # valid. A null in a template is still refused (test_check_frozen above).
+    cfg = RG.validate_frozen(RG.load_yaml(RG.DEFAULT_FROZEN))
+    assert cfg["m_hot"] == 64 and cfg["p_audit"] in cfg["p_sweep"]
 
 
 def test_inputs_load_from_the_m33_and_n32_formats(tmp_path: Path) -> None:
