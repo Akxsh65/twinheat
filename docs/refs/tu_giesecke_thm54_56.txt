@@ -1,0 +1,179 @@
+source: Daohong Tu and Kay Giesecke (Stanford University), "Online Conformal Prediction for Non-Exchangeable Panel Data", arXiv 2605.17705v2 [stat.ML], 5 Oct 2026
+file: references/03_uncertainty_conformal/all3_Tu_OnlineConformalPanelData.pdf
+location: data, reveal process, filtration, update (1) (p. 3); finitization (p. 4); Algorithm 1 and update (5) (p. 5); Proposition 5.5, Assumption 5.6, Proposition 5.7, Assumption 5.8, Theorem 5.9 (p. 6); App. B.2.1 proof of Proposition 5.5 (pp. 18-19); Lemma B.13 (p. 20); App. B.2.4 proof of Theorem 5.9 (pp. 21-22); Proposition B.14 (p. 22); App. B.2.6 delayed feedback and Proposition B.15 (pp. 23-24). Printed page = PDF page.
+file name: kept as CLAUDE.md §16.2 names it ("thm54_56"); the contents use the v2 numbering. The results CLAUDE.md §8.2 means are Prop. 5.5 and Thm 5.9, not "Thm 5.4" and "Thm 5.6" (decision D12).
+used by: Lemma 1 steps (2)-(3), Lemma 1′, G4, the audit-delay question D14 (CLAUDE.md §8.2, §18.1); report/lemma1_review.md; report/lemma1_check_n31.md
+notation: subscripts after "_", superscripts after "^". 1{·} = indicator. ℛ_T = revealed rounds. Dictionary to TwinHeat: R_t ↔ A_t (audit coin), π ↔ p, ℓ_t ↔ err, revealed round ↔ audited step.
+transcribed by Claude from the PDF the team provided: text extracted with pdftotext, every formula set from the rendered page images (the extraction drops Greek letters and the two-column layout scrambles displays); checked against the PDF by: (reviewer of this PR)
+
+Everything between the ==== lines is the paper's text, kept word for word, except that "[...]" marks omitted text. Notes marked [TwinHeat] are ours and are not in the paper.
+
+==================================================================== Sec. 3, data and filtration (p. 3)
+
+    O_t := (X_{1,t}, Y_{1,t}, ..., X_{N,t}, Y_{N,t}, X_{N+1,t}, R_{t−1}, R_{t−1}Y_{N+1,t−1}),
+
+with R_0 = Y_{N+1,0} = 0. The calibration units are promptly observed, so the full round-t calibration slice {(X_{i,t}, Y_{i,t})}_{i≤N} is in O_t. The target covariate X_{N+1,t} is also in O_t, but the target response Y_{N+1,t} is not: in applications, the response may be revealed with a delay or never reported. We model this through the binary process (R_t)_{t≥1}, with R_t = 1 if Y_{N+1,t} is revealed by round t + 1 and R_t = 0 otherwise. If R_t = 1, then Y_{N+1,t} enters the filtration through O_{t+1}, which contains R_t and R_tY_{N+1,t}; if R_t = 0, it never does. [...]
+
+Filtration. The information available through round t is F_t := σ(O_1, ..., O_t), with F_0 := {∅, Ω}, and the prediction set C_t(X_{N+1,t}) ⊆ ℝ must be F_t-measurable. We also use the refinement F_t^+ := F_t ∨ σ(R_t, R_tY_{N+1,t}), which adds the round-t target feedback to F_t.
+
+Temporal branch: adaptive miscoverage level. The level α_t is initialized at the target level, α_0 = α, and updated using lagged target feedback. At the start of round t, if R_{t−1} = 1, the algorithm uses the revealed Y_{N+1,t−1} in O_t to compute the lagged miscoverage indicator ℓ_{t−1} = 1{Y_{N+1,t−1} ∉ C_{t−1}(X_{N+1,t−1})} and takes a gradient step with step size γ > 0, as in adaptive conformal inference (Gibbs and Candès, 2021):
+
+    α_t = α_{t−1} + γ(α − ℓ_{t−1}).                                                  (1)
+
+A miss (ℓ_{t−1} = 1) thus lowers the level and enlarges the prediction set, and a cover raises the level and shrinks it. If R_{t−1} = 0, the level is carried forward unchanged: α_t = α_{t−1}. By construction, α_t is F^+_{t−1}-measurable.
+
+==================================================================== Sec. 4, finitization (p. 4)
+
+Whenever α_t < w^{(t)}_{N+1,N+1}, the threshold q̂_t is +∞ by (2), so the set C_t in (3) is the whole real line.
+
+Finitization. The whole real line is an uninformative prediction set, so W-TQA replaces α_t in (3) by the effective level
+
+    α̃_t := max{α_t, w^{(t)}_{N+1,N+1}}.
+
+[...] Finitization does not modify the level α_t itself: it follows (1) on every revealed round, including fallback rounds, and may become negative.
+
+==================================================================== Algorithm 1 (p. 5), lines quoted
+
+Require: score ŝ, target level α ∈ (0, 1), bandwidth h > 0, step size γ > 0
+ 1: Initialize α_0 = α, [...] and R_0 = 0.
+ 4:    Set α_t = α_{t−1} + γR_{t−1}(α − ℓ_{t−1}), with ℓ_{t−1} = 1{Y_{N+1,t−1} ∉ C_{t−1}} computed only if R_{t−1} = 1.
+ 6:    Set α̃_t = max{α_t, w^{(t)}_{N+1,N+1}} and q̂_t = Q_{1−α̃_t}(s̃_t; W^{(t)}).
+
+==================================================================== Sec. 5.2 (pp. 5-6)
+
+Recall from Algorithm 1 that, with ℓ_t := 1{Y_{N+1,t} ∉ C_t(X_{N+1,t})}, a revealed round applies the gradient step (1) and an unrevealed round leaves the level unchanged, so that for every t ≥ 1
+
+    α_{t+1} = α_t + γR_t(α − ℓ_t),                                                   (5)
+
+and α_1 = α_0 = α because R_0 = 0. Write ℛ_T := {t ≤ T : R_t = 1} for the set of revealed rounds up to round T and |ℛ_T| for its cardinality. The next result expresses the miscoverage on the revealed rounds through the final level α_{T+1} and bounds it from below.
+
+Proposition 5.5. Run Algorithm 1 with step size γ > 0. Then α_t ≤ 1 + γα for every t ≥ 0, and, almost surely, for every T ≥ 1, on {ℛ_T ≠ ∅},
+
+    (1/|ℛ_T|) Σ_{t∈ℛ_T} ℓ_t − α = (α − α_{T+1}) / (γ|ℛ_T|)                            (6)
+                                 ≥ −(1 − α + γα) / (γ|ℛ_T|).                          (7)
+
+The level α_{T+1} is observed during the run, so (6) gives the realized deviation exactly after deployment. An a priori guarantee needs two further steps: a lower bound on α_{T+1}, as in Gibbs and Candès (2021), and a transfer from revealed to unrevealed rounds.
+
+Lower bound on α_{T+1}. After finitization, α_{T+1} has no a priori lower bound: on a fallback round W-TQA issues the fallback set, which can miss the target, and each revealed miss lowers the level α_t further, even when it is already negative. We therefore make the following assumption on the fallback set.
+
+Assumption 5.6 (Feasibility of the fallback set). There exists ζ ∈ (0, α] such that, almost surely for every t,
+
+    P( ŝ_{N+1,t} > max_{k≤N} ŝ_{k,t} | F^+_{t−1} ) ≤ α − ζ.                           (8)
+
+[...]
+
+Transfer from revealed to unrevealed rounds. The next result, the selection bound of Manski (1989) applied round by round, shows that the observed data restrict P(ℓ_t = 1) to an interval but cannot single out a value within it.
+
+Proposition 5.7. Fix a round t and any online procedure whose prediction set C_t is neither empty nor all of ℝ, in the sense that there are F_t-measurable points y_t^in ∈ C_t and y_t^out ∉ C_t almost surely. With π_t := P(R_t = 1) > 0 and m_t^obs := P(ℓ_t = 1 | R_t = 1),
+
+    P(ℓ_t = 1) ∈ [ π_t m_t^obs, π_t m_t^obs + (1 − π_t) ].                            (9)
+
+Conversely, for any π_t ∈ (0, 1] and m_t^obs ∈ [0, 1], there is a family of panel distributions under which everything observed, including R_t and R_tY_{N+1,t}, has the same distribution, while P(ℓ_t = 1) ranges over all of (9).
+
+Misses on unrevealed rounds leave no trace in the observed data, so the data cannot narrow (9), at a single round or on average over rounds (Appendix B.2.5). This transfer is therefore not possible without an assumption on the reveal mechanism.
+
+Assumption 5.8 (MCAR target feedback). There exists π ∈ (0, 1] such that, with ℋ_t := F_t ∨ σ(Y_{N+1,t}),
+
+    P(R_t = 1 | ℋ_t) = π   a.s. for all t.
+
+Since ℓ_t is ℋ_t-measurable, revelation does not depend on whether the current set covers, so P(ℓ_t = 1) = m_t^obs. Combining Proposition 5.5 with the lower bound on α_{T+1} supplied by Assumption 5.6 and the transfer supplied by Assumption 5.8, the next result gives long-run average coverage.
+
+Theorem 5.9. Run Algorithm 1 with step size γ > 0 and suppose Assumptions 5.6 and 5.8 hold. Then, for every T ≥ 1 and δ ∈ (0, 1), with probability at least 1 − δ, if ℛ_T ≠ ∅, the miscoverage on the revealed rounds satisfies
+
+    −(1 − α + γα) / (γ|ℛ_T|) ≤ (1/|ℛ_T|) Σ_{t∈ℛ_T} ℓ_t − α
+                             ≤ (α + γ(1 − α) + γ log(1/δ)/(8ζ)) / (γ|ℛ_T|).          (10)
+
+For every T ≥ 1, the average miscoverage probability over all rounds satisfies
+
+    −(1 − α + γα) / (πγT) ≤ (1/T) Σ_{t=1}^{T} P(Y_{N+1,t} ∉ C_t(X_{N+1,t})) − α
+                          ≤ (α + γ(1 − α) + γ/(8ζ)) / (πγT).                          (11)
+
+==================================================================== App. B.2.1 (pp. 18-19)
+
+Proof of Proposition 5.5. The range of the level. We show α_s ≤ 1 + γα for every s ≥ 0 by induction; the base case is α_0 = α_1 = α < 1. Suppose α_s ≤ 1 + γα for some s ≥ 1. If R_s = 0, then α_{s+1} = α_s. If R_s = 1 and α_s < 1, then (5) gives α_{s+1} ≤ α_s + γα < 1 + γα. If R_s = 1 and α_s ≥ 1, then α̃_s ≥ α_s ≥ 1, so q̂_s = −∞ by Lemma B.1, C_s = ∅ and ℓ_s = 1; therefore α_{s+1} = α_s − γ(1 − α) < α_s ≤ 1 + γα. For s = T + 1,
+
+    α − α_{T+1} ≥ −(1 − α + γα).                                                     (28)
+
+The identity. The argument is the telescoping of Proposition 4.1 of Gibbs and Candès (2021), applied only on rounds where target feedback is observed. Summing (5) over t = 1, ..., T and using α_1 = α,
+
+    α_{T+1} = α + γ Σ_{t∈ℛ_T} (α − ℓ_t),
+
+which rearranges to
+
+    Σ_{t∈ℛ_T} (ℓ_t − α) = (α − α_{T+1}) / γ.                                         (29)
+
+Dividing by |ℛ_T| on {ℛ_T ≠ ∅} gives (6), and dividing by the horizon T gives
+
+    (1/T) Σ_{t=1}^{T} R_t(ℓ_t − α) = (α − α_{T+1}) / (Tγ).                            (30)
+
+The lower bound. Inserting (28) into (6) gives (7). □
+
+==================================================================== Lemma B.13 (p. 20), statement
+
+Lemma B.13. Suppose Assumption 5.8 holds and that there is ζ ∈ (0, α] such that, almost surely for every t, (8) holds on the event {α_t < 0}. Then, for every t ≥ 1 and x ≥ 0,
+
+    P(α_t < −γ(1 − α) − γx) ≤ e^{−8ζx},      Eα_t ≥ −γ(1 − α) − γ/(8ζ).              (33)
+
+==================================================================== App. B.2.4 (pp. 21-22)
+
+Proof. Taking expectations in (30) gives
+
+    (1/T) Σ_{t=1}^{T} E[R_tℓ_t] − α (1/T) Σ_{t=1}^{T} E[R_t] = (α − Eα_{T+1}) / (Tγ).     (39)
+
+The set C_t is F_t-measurable and Y_{N+1,t} ∈ σ(Y_{N+1,t}), so ℓ_t = 1{Y_{N+1,t} ∉ C_t} is ℋ_t-measurable. Assumption 5.8 gives E[R_t | ℋ_t] = π almost surely, hence
+
+    E[R_tℓ_t] = E[ℓ_t E(R_t | ℋ_t)] = π E[ℓ_t],      E[R_t] = π.
+
+Substituting into (39), dividing by π and using E[ℓ_t] = P(Y_{N+1,t} ∉ C_t(X_{N+1,t})) give
+
+    (1/T) Σ_{t=1}^{T} P(Y_{N+1,t} ∉ C_t(X_{N+1,t})) − α = (α − Eα_{T+1}) / (πγT).    (40)
+
+Taking expectations in (28) gives α − Eα_{T+1} ≥ −(1 − α + γα), which with (40) gives the lower bound in (11). Under Assumption 5.6, (8) holds in particular on {α_t < 0} for every t, so Lemma B.13 with t = T + 1 gives Eα_{T+1} ≥ −γ(1 − α) − γ/(8ζ), that is, α − Eα_{T+1} ≤ α + γ(1 − α) + γ/(8ζ), which with (40) gives the upper bound in (11). The lower bound in (10) is (7). For the upper bound, fix δ ∈ (0, 1). By the first inequality of (33) with t = T + 1 and x = log(1/δ)/(8ζ), the event {α_{T+1} ≥ −γ(1 − α) − γ log(1/δ)/(8ζ)} has probability at least 1 − δ, and on it α − α_{T+1} ≤ α + γ(1 − α) + γ log(1/δ)/(8ζ). Inserting this bound into (6) gives the upper bound in (10) on the same event when ℛ_T ≠ ∅. □
+
+==================================================================== Proposition B.14 (p. 22)
+
+Proposition B.14. Run Algorithm 1 with step size γ > 0, let p_t := P(R_t = 1 | ℋ_t), and suppose Ep_t = π ∈ (0, 1] for all t. Then, for every T ≥ 1,
+
+    (1/T) Σ_{t=1}^{T} P(Y_{N+1,t} ∉ C_t) − α = (α − Eα_{T+1}) / (πγT) − Bias_T / π,
+    Bias_T := (1/T) Σ_{t=1}^{T} Cov(p_t, ℓ_t).                                         (41)
+
+Under Assumption 5.8, Bias_T = 0 and (41) reduces to (40).
+
+==================================================================== App. B.2.6 (pp. 23-24)
+
+Delay model and delayed update. Fix an integer D ≥ 1. The response Y_{N+1,s} of round s either arrives with the batch of some round a_s ∈ {s + 1, ..., s + D}, in which case R_s := 1, or does not arrive within D rounds, in which case R_s := 0 and a_s := ∞; a response arriving after round s + D is discarded. [...] The delayed variant of Algorithm 1 replaces its level update by one gradient step per arriving response, so that for every t ≥ 1
+
+    α_t = α − γ Σ_{s≥1 : a_s≤t} (ℓ_s − α),                                           (43)
+
+where ℓ_s = 1{Y_{N+1,s} ∉ C_s} is computed when Y_{N+1,s} arrives, from the stored threshold q̂_s and covariate X_{N+1,s}; every other line is unchanged. [...]
+
+Virtual level. For t ≥ 1 let
+
+    α*_t := α − γ Σ_{s=1}^{t−1} R_s(ℓ_s − α),                                         (44)
+
+the level that (5) produces from the same miss indicators when every revealed response arrives after one round [...].
+
+Proposition B.15. Run the delayed variant of Algorithm 1 with step size γ > 0 and maximal delay D ≥ 1. Then α*_t ≤ 1 + Dγα for every t ≥ 1, and for every T ≥ 1
+
+    Σ_{t∈ℛ_T} (ℓ_t − α) = (α − α*_{T+1}) / γ.                                         (48)
+
+If (46) and (47) hold, then for every t ≥ 1 and x ≥ 0
+
+    P(α*_t < −Dγ(1 − α) − γx) ≤ e^{−8ζx},      Eα*_t ≥ −Dγ(1 − α) − γ/(8ζ);          (49)
+
+for every T ≥ 1 and δ ∈ (0, 1), with probability at least 1 − δ, if ℛ_T ≠ ∅,
+
+    −(1 − α + Dγα) / (γ|ℛ_T|) ≤ (1/|ℛ_T|) Σ_{t∈ℛ_T} ℓ_t − α
+                              ≤ (α + Dγ(1 − α) + γ log(1/δ)/(8ζ)) / (γ|ℛ_T|);         (50)
+
+and for every T ≥ 1
+
+    −(1 − α + Dγα) / (πγT) ≤ (1/T) Σ_{t=1}^{T} P(Y_{N+1,t} ∉ C_t(X_{N+1,t})) − α
+                           ≤ (α + Dγ(1 − α) + γ/(8ζ)) / (πγT).                         (51)
+
+====================================================================
+
+[TwinHeat] Reading notes (UNSURE until the reviewer confirms against the PDF):
+- (46) and (47) are Assumptions 5.6 and 5.8 read with the delayed σ-fields G_{t−1} and ℋ_t^D (p. 23). They are not transcribed here.
+- Theorem 5.9 is stated for W-TQA (Algorithm 1, with finitization) under Assumptions 5.6 and 5.8. Its proof of (40) uses only (30), the F_t-measurability of C_t and Assumption 5.8; Assumption 5.6 enters only through Lemma B.13, the lower bound on the level.
+- The results are stated for one score function ŝ fixed by the user (Algorithm 1 "Require"). Whether they hold for a score that changes between rounds is not discussed in the transcribed text.
