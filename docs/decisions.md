@@ -409,3 +409,40 @@ experiments/oracle_label.py. Choices not fixed by CLAUDE.md or the N3.2 prompt:
   an AMG label is re-solved by PCG (on the GPU if --gpu, else NumPy on the CPU), a PCG label by AMG.
 - iters_full (PCG iterations from the ensemble mean, H7's baseline) is left null: it needs mu,
   so it comes with the N3.3 audit traces, which already warm-start from mu.
+
+## D4 · Frozen gate hyperparameters, 2026-11-23
+`experiments/configs/frozen.yaml`. M asked Claude to use CLAUDE.md's suggested values and to pick
+the rest; M owns the decision. Every value below is fixed before any reported run (CLAUDE.md §4).
+
+From CLAUDE.md or earlier decisions:
+- tau_K = 1 K (§8.1 "e.g. τ = 1 K"); p_audit = 0.1 (§8.1 "e.g. 0.1"), p_sweep {0.05, 0.1, 0.2}
+  (§8.5); lam = 1.0 and eps_K = 1e-6 (§9.2 reference code); m_hot = 64 (§8.1 default, equal to
+  the trajectories'); p_min = 0.05 (§9.2); seeds 0-4 (§4); G1 window 100 (§11.1), residual
+  "scaled", c_events and delta_n "off" (D13); G6 m_buckets = 40 (D9 development default, the
+  paper's bucket count).
+
+Picked (CLAUDE.md gives no value; the reason for each):
+- alpha = 0.1: the usual conformal level; §8.2 needs alpha <= 1/2.
+- gamma = 0.05: the Lemma 1 slack falls steeply up to about 0.05 and flattens after (the
+  table in the M3.5 note); larger gamma moves alpha_t more per audit, which §15 warns can make q
+  oscillate. Fallback if q oscillates: smaller gamma (§15).
+- W = 200: about 20/alpha scores, so the (1 - alpha) quantile rests on about 20 scores above it;
+  small enough that after about 200 audits the window holds audited scores only (P1 at p = 0.1
+  has about 200 audits per run), so the threshold can follow the proposer.
+- delta = 0.05: 95 % confidence, the same level as the bootstrap CIs.
+- eps_S = 0.1, eps_S_sweep {0.05, 0.1, 0.2}: score units; q is of order tau / s, so 0.1 is a
+  tenth of a typical threshold, with one step either side for E14.
+- p_min_sweep {0.02, 0.05}: both <= every p of p_sweep, so E16 runs every (p, p_min) pair.
+- kappa = 0.5: halfway between uniform (0) and scale-proportional (1) audits; G7 is an ablation.
+- G3 classifier_C = 1.0: scikit-learn's default regularisation.
+- G6 r = 1 (the coarsest grid: MVP randomises between neighbouring bucket edges), eps = 0.1,
+  noise_width = 0.05 (small next to q; D9 rule 4 keeps the Lemma 1' direction for any w >= 0).
+  UNSURE (D9): the smoothness bound rho has not been re-derived for this w; H8 stays empirical.
+- bootstrap: 10,000 resamples, seed 0.
+
+Which slack H1 is judged against: the §8.2 bound, as CLAUDE.md states H1, unchanged in code.
+At these settings it is above 1 for most p = 0.1 runs (P1 T = 2,000: 1.13; P3 T = 3,200: 0.90)
+and informative only at p = 0.2 (0.50-0.87), so the report gives H1 at p = 0.2 alongside the
+headline p = 0.1 and says the p = 0.1 bound is vacuous. The tighter bound (4) with C+ and the
+in-expectation form (report/lemma1_review.md §3) need N's sign-off (N3.1) before they are used
+in a verdict.
