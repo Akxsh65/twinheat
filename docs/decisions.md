@@ -466,3 +466,17 @@ in a verdict.
   is the block-diagonal part of the SPD A (exact inverse of each column's 4 × 4 tridiagonal
   block), so it is SPD as PCG requires (§18.5). E13 passes `--precond linez`.
 - **Owner:** N.
+
+## D4 amendment: τ sensitivity run, 2026-11-24 (M)
+- **Finding (E7 at v3-freeze, τ = 1 K):** the ensemble's peak error exceeds 1 K on only 0.1 % of
+  the 92,461 trajectory proposals (|T̂_peak − T_peak| quantiles: median 0.115 K, 90 % 0.302 K,
+  99 % 0.587 K; computed on rvcse from labels.parquet and the trajectories). With no gate at all
+  (G0) M1 is 0.11 %, so every gate meets α = 0.1 trivially and E7/E15/E16 cannot tell the gates
+  apart. The run stays the pre-registered headline and is reported as such.
+- **Amendment:** one sensitivity run with `experiments/configs/frozen_tau0.2.yaml`, identical to
+  frozen.yaml except τ = 0.2 K, where 25.3 % of proposals have a peak error above τ (2.5× α), so
+  the large-error event is common enough for the gates to differ. Chosen after seeing the
+  τ = 1 K results and the error distribution; reported next to the headline with this reason,
+  never instead of it. Outputs: experiments/results/{e7,e15,e16}_tau0.2.
+- **Unchanged:** the H1/H8 verdict lines still compare M1 with the §8.2 bound, which is vacuous at
+  p = 0.1 (D4 entry); the report reads M1 against α directly as the empirical evidence.

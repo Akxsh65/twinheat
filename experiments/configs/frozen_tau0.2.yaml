@@ -1,0 +1,37 @@
+# Frozen gate hyperparameters (CLAUDE.md §4, open decision D4, owner M, due week 6).
+# SENSITIVITY RUN, added 2026-11-24 (docs/decisions.md, "D4 amendment: tau sensitivity"):
+# identical to frozen.yaml except tau_K. frozen.yaml (tau 1 K) stays the pre-registered headline.
+# The runs refuse a frozen.yaml with uncommitted changes. Changing it after results exist means new
+# runs, logged in docs/decisions.md.
+
+alpha: 0.1            # target accepted-error level (§8.2)
+tau_K: 0.2            # accept iff B = q*s <= tau (K); SENSITIVITY (headline: 1 K)
+gamma: 0.05           # ACI step size
+W: 200                # score window of the ACI gates (G4, G5, G7)
+lam: 1.0              # s = r_hot + lam * sd_hot + eps (§8.1)
+eps_K: 1.0e-6         # eps of the scale (K), > 0
+m_hot: 64             # hottest cells in r_hot; must equal the trajectories' m_hot (M3.3: 64)
+p_audit: 0.1          # G5's headline audit probability; one of p_sweep
+p_sweep: [0.05, 0.1, 0.2]   # CLAUDE.md §8.5 / §11.1
+delta: 0.05           # confidence of the Lemma 1 bound printed beside M1
+eps_S: 0.1            # certified-audit width stop (score units), one of eps_S_sweep (E14, H7)
+eps_S_sweep: [0.05, 0.1, 0.2]    # list
+p_min: 0.05           # G7 audit floor, one of p_min_sweep (E16, H9)
+p_min_sweep: [0.02, 0.05]    # list
+kappa: 0.5            # G7 mix between uniform (0) and scale-proportional (1) audits
+seeds: [0, 1, 2, 3, 4]   # §4: 5 seeds for every gate experiment (= the trajectory seeds)
+g1:                   # DeepOHeat-v2 baseline (§11.1, §18.4, D13)
+  window: 100         # §11.1: FIFO window of 100
+  residual: scaled    # "scaled" (ours, K) or "raw" (paper, W): D13
+  c_events: "off"     # "off", or the paper's C (3) to stop checking after C refinements: D13
+  delta_n: "off"      # "off", or the paper's ΔN (50) refinements per event: D13
+g3:
+  classifier_C: 1.0   # inverse regularisation of the density-ratio classifier (P2-P4)
+g6:                   # MVP settings, D9
+  m_buckets: 40
+  r: 1
+  eps: 0.1
+  noise_width: 0.05   # smoothing noise width w (score units)
+bootstrap:
+  resamples: 10000    # bootstrap resamples over seeds for the 95 % CIs
+  seed: 0
