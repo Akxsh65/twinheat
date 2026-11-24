@@ -498,3 +498,15 @@ in a verdict.
   v3-freeze run stays in the repo and is reported as the Lemma 2(b) / 4-V-cycle row. D1 already
   judges H6 at 0.1 K counting the pointwise certificate.
 - **Owner:** N.
+
+## D14 · Audit iteration cap, 2026-11-24 (decided by M at the user's instruction)
+- **Decision:** every certified-audit solve stops at 20,000 PCG iterations at the latest
+  (`experiments/audit_traces.py`, `certify/peak_interval.audit_trace`, `certify/pcg_batched`
+  `maxit`). The cap does not depend on the label, as Tu & Giesecke Prop. B.15 requires of a delay
+  bound (CLAUDE.md §18.1).
+- **Why 20,000:** the default `maxit` of solvers/pcg.py and certify/stopping.py. A full solve
+  from μ to 1e-8 takes about 1,300 iterations on the test boards (E13 at v3-freeze, mean 1,303),
+  so the cap is never reached in practice and no audit is discarded; it only bounds the delay.
+- **E14 scope:** traces are computed for the designs G5 audits at the frozen p (E14 replays only
+  G5 at that p). G5's coin is label-independent (constant p), checked by computing the set from
+  the coin alone and from the replay; one trace serves every ε_S of the sweep and both τ configs.
