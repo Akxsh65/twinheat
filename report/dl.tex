@@ -127,9 +127,10 @@ it.
 \section{Experiments}
 \label{sec:dl-experiments}
 \paragraph{Setup.} 45 proposer runs (P1--P3, three levels, five seeds) produced 92{,}461
-proposals, % experiments/oracle_report.md and the quantile computation in docs/decisions.md (D4 amendment)
-of which 92{,}311 are distinct designs; every one was labelled with an exact solve to a relative
-residual of $10^{-8}$, cross-checked on 0.5\,\% of the designs by a second solver (largest
+proposals; % docs/decisions.md (D4 amendment): the count on rvcse
+with the 1{,}000 calibration designs these contain 92{,}311 distinct designs,
+% experiments/oracle_report.md (93,461 input rows, 92,311 unique)
+and every one was labelled with an exact solve to a relative residual of $10^{-8}$, cross-checked on 0.5\,\% of the designs by a second solver (largest
 difference $2.7\times10^{-8}$~K, \texttt{experiments/oracle\_report.md}). Every gate is then
 replayed offline on the same trajectories with the same coins. All hyperparameters were frozen
 before the runs ($\alpha = 0.1$, $\tau = 1$~K, $\gamma = 0.05$, window 200, headline $p = 0.1$;
@@ -167,7 +168,9 @@ label-free scale would lower the budget; the guarantee does not depend on it.
 
 \paragraph{Per-group validity (E15, H8).} Table~\ref{tab:e15-tau02} splits the accepted-error
 rate by proposer, aggressiveness, OOD-score tercile and hotspot position. G5 stays below
-$\alpha$ in every group in all but two of the 552 group-runs, both in small groups. The
+$\alpha$ in all but 2 of its 277 group-runs, both in small groups
+% counts from report/tables/e15_tau02.tex (G5 column)
+(\texttt{edge=1}, \texttt{ood=3}). The
 multivalid gate G6, designed for per-group control, exceeds $\alpha$ in many groups, most often
 with simulated annealing (P2). H8 is not supported; G6's per-group guarantee was a target for a
 proof that was not completed and is reported as empirical. The likely causes are the small
