@@ -267,6 +267,12 @@ class Labels:
                                      strict=True):
                 traces[h] = Trace(np.asarray(it), np.asarray(lo, dtype=np.float64),
                                   np.asarray(hi, dtype=np.float64))
+            # experiments/audit_traces.py also measures iters_full (PCG from μ to 1e-8, the H7
+            # baseline) for every audited design; it fills only labels that have none
+            for h, v in zip(t["x_hash"], t.get("iters_full", [None] * len(t["x_hash"])),
+                            strict=True):
+                if v is not None and iters.get(h) is None:
+                    iters[h] = int(v)
         return cls(oracle, iters, traces)
 
 
