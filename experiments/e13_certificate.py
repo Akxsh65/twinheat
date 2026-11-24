@@ -133,7 +133,8 @@ def _colours(shape: tuple[int, ...]) -> np.ndarray:
 
 def analyse_board(A: sp.spmatrix, b: np.ndarray, coeffs: dict, mu: np.ndarray,
                   theta: np.ndarray, *, board_id: str, precond: str, pointwise_every: int,
-                  maxit: int, kappa_iters: int = 3, kappa_accel: str | None = None
+                  maxit: int, kappa_iters: int = 3, kappa_accel: str | None = None,
+                  pw_iters: int = 4, pw_accel: str | None = None
                   ) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
     """One board's row of e13_boards.csv and its warm-start trace (relres, err per iterate)."""
     A = sp.csr_matrix(A, dtype=np.float64)
@@ -152,7 +153,7 @@ def analyse_board(A: sp.spmatrix, b: np.ndarray, coeffs: dict, mu: np.ndarray,
     def pointwise(k: int, x: np.ndarray) -> None:  # Lemma 2(c) on the PCG iterates
         if kappa is None or k % pointwise_every or all(v is not None for v in pw_first.values()):
             return
-        w = pointwise_bound(A, b, x, ml=ml, z_and_Az=pz)
+        w = pointwise_bound(A, b, x, n_vcycles=pw_iters, ml=ml, z_and_Az=pz, accel=pw_accel)
         if not np.all(np.abs(theta - x) <= w):
             raise CertificateViolation(f"board {board_id}, iterate {k}: pointwise bound below "
                                        "the true error in some cell (B7)")
@@ -179,7 +180,7 @@ def analyse_board(A: sp.spmatrix, b: np.ndarray, coeffs: dict, mu: np.ndarray,
     k_varah = kappa_from_z(A, np.ones(A.shape[0]))  # z = 1 (§18.5)
     for s in GS_SWEEPS:
         xs = gauss_seidel_smooth(A, b, mu, s, sweep="red_black", colours=_colours(shape))
-        w = pointwise_bound(A, b, xs, ml=ml, z_and_Az=pz)
+        w = pointwise_bound(A, b, xs, n_vcycles=pw_iters, ml=ml, z_and_Az=pz, accel=pw_accel)
         true_cells = np.abs(theta - xs)
         if not np.all(true_cells <= w):
             raise CertificateViolation(f"board {board_id}, {s} GS sweeps: pointwise bound "
@@ -318,7 +319,8 @@ def predict(data: Path, split: str, out: Path, device: str, batch: int, limit: i
 
 
 def _job(args: tuple) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
-    i, rec, mu_path, precond, pointwise_every, maxit, kappa_iters, kappa_accel = args
+    i, rec, mu_path, precond, pointwise_every, maxit, kappa_iters, kappa_accel, pw_iters, \
+        pw_accel = args
     from data.raster import rasterise
     from solvers.amg_baseline import amg_solve
     from solvers.fvm import assemble_board, coefficients
@@ -332,14 +334,16 @@ def _job(args: tuple) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
     theta = amg_solve(A, b, ORACLE_TOL, strength_theta=0.1).theta
     row, tr = analyse_board(A, b, c, mu, theta, board_id=f"{i}:{rec['id']}", precond=precond,
                             pointwise_every=pointwise_every, maxit=maxit,
-                            kappa_iters=kappa_iters, kappa_accel=kappa_accel)
+                            kappa_iters=kappa_iters, kappa_accel=kappa_accel,
+                            pw_iters=pw_iters, pw_accel=pw_accel)
     row["dirichlet_edges"] = "".join(rec["dirichlet_edges"]) or "-"
     return row, {"relres": tr["relres"].astype(np.float32), "err": tr["err"].astype(np.float32)}
 
 
 def run(data: Path, split: str, mu_dir: Path, out: Path, *, precond: str, pointwise_every: int,
         workers: int, maxit: int, limit: int | None, kappa_iters: int,
-        kappa_accel: str | None) -> dict[str, Any]:
+        kappa_accel: str | None, pw_iters: int = 4, pw_accel: str | None = None
+        ) -> dict[str, Any]:
     from models.dataset import TwinHeatDataset
     from models.normalise import dataset_hash
 
@@ -358,7 +362,7 @@ def run(data: Path, split: str, mu_dir: Path, out: Path, *, precond: str, pointw
     ds = TwinHeatDataset(data, split, N=meta["N"], allow_eval=True)
     n = meta["n"] if limit is None else min(limit, meta["n"])
     jobs = [(i, ds.record(i), str(mu_dir / "mu.npy"), precond, pointwise_every, maxit,
-             kappa_iters, kappa_accel) for i in range(n)]
+             kappa_iters, kappa_accel, pw_iters, pw_accel) for i in range(n)]
     old = {v: os.environ.get(v) for v in THREAD_VARS}
     os.environ.update(dict.fromkeys(THREAD_VARS, "1"))
     try:
@@ -375,6 +379,7 @@ def run(data: Path, split: str, mu_dir: Path, out: Path, *, precond: str, pointw
     info = {"commit": commit, "split": split, "dataset_hash": dh, "mu_meta": meta,
             "precond": precond, "pointwise_every": pointwise_every, "maxit": maxit,
             "kappa_iters": kappa_iters, "kappa_accel": kappa_accel or "none",
+            "pointwise_iters": pw_iters, "pointwise_accel": pw_accel or "none",
             "workers": workers, "hardware": _hardware(), "date": dt.datetime.now().isoformat(),
             "oracle_tol": ORACLE_TOL, "fixed_tol": FIXED_TOL}
     write_outputs(out, rows, summary, info)
@@ -406,6 +411,7 @@ def write_outputs(out: Path, rows: list[dict[str, Any]], summary: dict[str, Any]
     footer = (f"commit {info['commit']} · dataset {info['dataset_hash'][:12]} · "
               f"{info['split']} n = {summary['n_boards']} · precond {info['precond']} · "
               f"z {info.get('kappa_accel', 'none')} x{info.get('kappa_iters', 3)} · "
+              f"w0 {info.get('pointwise_accel', 'none')} x{info.get('pointwise_iters', 4)} · "
               f"{info['hardware']} · {info['date'][:10]}")
     L = ["# E13: certified early stopping on the 4-layer board", "",
          "Generated by experiments/e13_certificate.py; do not edit. " + footer, "",
@@ -482,6 +488,10 @@ def main(argv: list[str] | None = None) -> None:
                    help="z for kappa-hat: V-cycles (none, §8.4) or AMG-preconditioned CG")
     r.add_argument("--kappa-iters", type=int, required=True,
                    help="V-cycles or CG iterations for z (§8.4 uses 3 V-cycles)")
+    r.add_argument("--pointwise-accel", required=True, choices=("none", "cg"),
+                   help="w0 of Lemma 2(c): V-cycles (none, §8.4) or AMG-preconditioned CG")
+    r.add_argument("--pointwise-iters", type=int, required=True,
+                   help="V-cycles or CG iterations for w0 (§8.4 uses 4 V-cycles)")
     r.add_argument("--limit", type=int, default=None)
     a = ap.parse_args(argv)
     if a.cmd == "predict":
@@ -491,7 +501,9 @@ def main(argv: list[str] | None = None) -> None:
         return
     s = run(a.data, a.split, a.mu, a.out, precond=a.precond, pointwise_every=a.pointwise_every,
             workers=a.workers, maxit=a.maxit, limit=a.limit, kappa_iters=a.kappa_iters,
-            kappa_accel=None if a.kappa_accel == "none" else a.kappa_accel)
+            kappa_accel=None if a.kappa_accel == "none" else a.kappa_accel,
+            pw_iters=a.pointwise_iters,
+            pw_accel=None if a.pointwise_accel == "none" else a.pointwise_accel)
     print(json.dumps({"H6": s["H6"], "week6": s["week6"], "n_boards": s["n_boards"],
                       "n_no_certificate": s["n_no_certificate"]}, indent=2, default=str))
     print(f"wrote {a.out}")
