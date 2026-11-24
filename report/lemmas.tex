@@ -1,0 +1,170 @@
+% Appendix: lemmas and proofs (N + M). Sources: report/lemma1_review.md (M3.4; proof steps and
+% statement, §§3, 4, 7, 10), report/lemma1_check_n31.md (N3.1 check: verdicts and the points
+% marked below), docs/refs/gibbs_candes_prop41.txt, docs/refs/tu_giesecke_thm54_56.txt (v2
+% numbering, D12), certify/margin.py (Steps 1-7), CLAUDE.md §8.2-§8.5, §18.
+% Status: NOT SIGNED. Each result carries its checker (CLAUDE.md §2) and sign-off state in
+% Table~\ref{tab:signoff}; nothing here may be called proved until that table is filled in.
+% Bibliography keys: gibbs2021aci, tu2026, varah1975, bastani2022mvp. The Azuma-Hoeffding inequality has no
+% source yet: the user must supply one (rules 10, 12); until then it is marked UNVERIFIED.
+
+\chapter{Lemmas and proofs}
+\label{app:lemmas}
+
+\section{Setting}
+Steps $t = 1,\dots,T$ (a fixed horizon). At step $t$ a proposer commits a design $x_t$; the
+surrogate gives the peak estimate $\hat T_t$ and the label-free scale $s_t>0$; the gate holds a
+threshold $q_t\in[0,\infty]$ and accepts when $B_t = q_t s_t \le \tau$. The score is
+$S_t = |\hat T_t - T_t|/s_t$, with $T_t$ the true peak of the exact discrete solution. After the
+commit an audit coin $A_t\in\{0,1\}$ is drawn; an audited design returns a certified interval
+$T^-_t\le T_t\le T^+_t$ and the conservative score
+$S^+_t = \max(|\hat T_t - T^-_t|,|\hat T_t - T^+_t|)/s_t \ge S_t$. On the $k$-th audited step
+the gate sets $\mathrm{err}_k = \mathbf 1[S^+ > q]$ and updates
+$\alpha_{k+1} = \alpha_k + \gamma(\alpha-\mathrm{err}_k)$, with $q = \infty$ when
+$\alpha_k\le0$ and $\mathrm{err}_k = 1$ when $\alpha_k \ge 1$ (decision D7). Let
+$m^+_t = \mathbf 1[S^+_t>q_t]$ for $\alpha(t)\in(0,1)$, $m^+_t=1$ for $\alpha(t)\ge1$ and
+$m^+_t=0$ for $\alpha(t)\le0$, and let $\mathcal G_t$ be everything fixed before $A_t$ is drawn.
+
+\section{Lemma 1: proposer-agnostic control of accepted errors}
+\begin{lemma}\label{lem:1}
+Run the audited gate (G5) for $T$ steps as above and assume
+(i) $x_t$, the model, $s_t$ and $q_t$ are fixed before $A_t$;
+(ii) $A_t\sim\mathrm{Bernoulli}(p)$ independently of $\mathcal G_t$, including $x_t$ and its
+label; in particular the proposer cannot predict the coin;
+(iii) each audit returns $T^-_t\le T_t\le T^+_t$ by a procedure that does not use $A_t$, and its
+update is applied before step $t+1$ is gated;
+(iv) $\alpha\in(0,1)$, $\alpha_1\in[0,1]$.
+Let $W_T$ be the fraction of the $T$ steps that were accepted while
+$|\hat T_t - T_t|>\tau$. Then for every $\delta\in(0,1)$, with probability at least $1-\delta$,
+\begin{equation}\label{eq:lem1}
+  W_T \;\le\; \alpha + \frac{\max\{\alpha_1,1-\alpha_1\}+\gamma}{\gamma p T}
+        + \frac{1}{p}\sqrt{\frac{\ln(1/\delta)}{2T}} .
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+\emph{Step 1 (accepted large errors are miscoverages).} If $x_t$ is accepted with
+$|\hat T_t - T_t|>\tau$, then $q_t<\infty$ (else $B_t=\infty>\tau$) and
+$S_t s_t > \tau \ge q_t s_t$, so $S_t>q_t$, hence $S^+_t>q_t$ by (iii); if $\alpha(t)\ge1$ then
+$m^+_t=1$ by definition, and if $\alpha(t)\le0$ nothing is accepted. So
+$W_T \le M^+_T := \frac1T\sum_t m^+_t$.
+
+\emph{Step 2 (the audited steps).} The proof of Gibbs and Cand\`es' Lemma~4.1 and
+Proposition~4.1 \cite{gibbs2021aci} uses only that the errors are 0/1, that $\alpha_k<0$ forces
+$\mathrm{err}_k=0$ and that $\alpha_k>1$ forces $\mathrm{err}_k=1$; our audited stream has these
+properties ($q=\infty$ and D7). By the argument of their Proposition~4.1, applied to the audited
+subsequence as in Tu and Giesecke's Proposition~5.5 \cite{tu2026}, for every number $n_a$ of
+audits and pathwise,
+$\bigl|\sum_{k\le n_a}(\mathrm{err}_k-\alpha)\bigr| \le C/\gamma$ with
+$C=\max\{\alpha_1,1-\alpha_1\}+\gamma$.
+
+\emph{Step 3 (from audited steps to all steps).} By (iii), $\mathrm{err}_k = m^+_t$ on the $k$-th
+audited step $t$. Writing $p(m^+_t-\alpha) = A_t(m^+_t-\alpha) - D_t$ with
+$D_t = (A_t-p)(m^+_t-\alpha)$ and summing,
+\[
+  p\sum_t (m^+_t-\alpha) = \sum_{k\le n_a}(\mathrm{err}_k-\alpha) - \sum_t D_t .
+\]
+By (i) $m^+_t$ is $\mathcal G_t$-measurable, and by (ii) $\mathbb E[D_t\mid\mathcal G_t]=0$;
+given $\mathcal G_t$, $D_t$ lies in an interval of length $|m^+_t-\alpha|\le1$. The one-sided
+Azuma--Hoeffding inequality \textbf{[source to be supplied; UNVERIFIED]} gives
+$-\sum_t D_t \le \sqrt{T\ln(1/\delta)/2}$ with probability at least $1-\delta$. Dividing by $pT$
+and using Steps 1 and 2 gives \eqref{eq:lem1}.
+\end{proof}
+
+\paragraph{Remarks.}
+\begin{itemize}
+\item \emph{Cited and ours.} Step 2 is cited (by the argument of \cite[Prop.~4.1]{gibbs2021aci},
+as in \cite[Prop.~5.5]{tu2026}); Steps 1 and 3 are ours. Taking expectations in Step~3 instead of
+applying Azuma gives $|\frac1T\sum_t\mathbb E\,m^+_t-\alpha|\le C/(\gamma pT)$, the identity in the
+proof of \cite[Thm~5.9]{tu2026} (their eq.~(40)); we cite it as an argument, not as their theorem,
+whose hypotheses differ from ours.
+\item \emph{Relation to the experiments.} Bound \eqref{eq:lem1} is smaller than the form
+$\alpha + C/(\gamma pT) + (2/p)\sqrt{\ln(4/\delta)/T}$ written in the project plan and printed by
+the experiment scripts, so the scripts' bound is valid but looser.
+\item \emph{A sharper constant (unsigned).} Only the upper side of Step~2 matters for $W_T$, and
+it holds with $C^+ = \alpha_1+\gamma(1-\alpha) \le C$. This is pending the checker's sign-off and
+is not used in any verdict.
+\item \emph{Scope.} The statement needs each audit applied before the next design is gated
+(iii). The offline replay of Chapter~\ref{ch:dl} is sequential; a server that scores a batch of
+audits against a threshold that has already moved would violate (iii) (review, §5).
+\item \emph{The coin.} Assumption (ii) treats the audit coin as random and unknown to the
+proposer. A pseudo-random stream whose seed the proposer knows would break it; the seed must be
+kept from the proposer.
+\item \emph{Corollary.} Among accepted predictions the large-error rate is $W_T$ divided by the
+accepted fraction, a ratio of observed counts.
+\end{itemize}
+
+\section{Lemma 1\texorpdfstring{$'$}{'}: certified audit scores}
+\begin{lemma}\label{lem:1p}
+Lemma~\ref{lem:1} holds when audits return certified intervals and the gate uses $S^+$ in place
+of the exact score, provided every interval contains the true peak (invariant B7).
+\end{lemma}
+\begin{proof}
+Step 2 needs only the three properties of the error stream, which hold for
+$\mathbf 1[S^+>q]$; Step 1 needs $S\le S^+$, which is B7. If an audit stops because its score
+interval lies on one side of $q_t$, then $\mathbf 1[S^+>q_t]=\mathbf 1[S>q_t]$ and nothing is
+lost; only a stop for width that straddles $q_t$ makes the threshold slightly conservative.
+\end{proof}
+
+\section{Lemma 2: a certificate for any approximate solution}
+\begin{lemma}\label{lem:2}
+Let $A$ be a nonsingular M-matrix, $A\theta=b$, $x$ any vector, $r=b-Ax$, $e=\theta-x$.
+(a) If $z>0$ and $Az>0$ componentwise, then
+$\|A^{-1}\|_\infty \le \hat\kappa := \max_i z_i/\min_i(Az)_i$.
+(b) Hence $\|e\|_\infty \le \hat\kappa\,\|r\|_\infty$.
+(c) If $w\ge0$ and $Aw\ge|r|$ componentwise, then $|e|\le w$ and
+$\max_i(x_i-w_i)\le\max_i\theta_i\le\max_i(x_i+w_i)$.
+\end{lemma}
+\begin{proof}
+$A^{-1}\ge0$ for a nonsingular M-matrix. (a) $Az\ge\min(Az)\mathbf 1$ gives
+$A^{-1}\mathbf 1\le z/\min(Az)$, and $\|A^{-1}\|_\infty$ is the largest entry of $A^{-1}\mathbf 1$.
+(b) $e=A^{-1}r$. (c) $|e| = |A^{-1}r| \le A^{-1}|r| \le A^{-1}Aw = w$, and the peak bounds follow
+cell by cell.
+\end{proof}
+With $z=\mathbf 1$, (a) is Varah's bound \cite{varah1975}; on the four-layer board it gives
+nothing, because rows of the internal layers away from a heat-sunk edge have zero margin.
+
+\paragraph{Floating-point margin.} The quantities above are computed in IEEE double precision.
+\texttt{certify/margin.py} bounds every rounding involved (Steps 1--7 of its derivation): a row of
+at most seven products in any summation order, with or without fused multiply-add; the row sums of
+$|A|$; $\min(Az)$; the residual $b-Ax$; and the final products, each evaluated in exact rational
+arithmetic and rounded up. The certificate returned is therefore a guaranteed upper bound on the
+error to the exact solution of the \emph{assembled} floating-point system; rounding in the assembly
+of $A$ is outside it. No certificate is issued when the computed $\min(Az)$ is within rounding of
+zero. The derivation is checked numerically against 80-digit arithmetic in
+\texttt{tests/test\_margin.py}.
+
+\paragraph{Construction on the four-layer board.} Any $z>0$ with $Az>0$ is valid in (a); its
+accuracy only affects tightness. Three multigrid V-cycles, the first construction, gave no valid
+$z$ on boards without a heat-sunk edge; conjugate gradients preconditioned by the same V-cycle do,
+and the same change applies to the first approximation of $w$ in (c). The positivity and
+$Aw\ge|r|$ conditions are checked with the margin above before any certificate is used, so the
+construction method never affects validity.
+
+\section{The per-group and risk-adaptive gates}
+\emph{G6 (per group).} One threshold per group through the MultiValid predictor
+\cite{bastani2022mvp}. The planned per-group analogue of Lemma~\ref{lem:1} was not proved: the
+transfer from audited to all steps, the dependence of $S^+$ on the threshold through early
+stopping, and the passage from per-bucket coverage in expectation to a per-group accepted-error
+rate remain open (review, §6). G6 is reported as empirical only.
+
+\emph{G7 (risk-adaptive audits).} With audit probabilities $p_t\ge p_{\min}$ fixed before the
+coin and importance-weighted updates, the argument of Lemma~\ref{lem:1} appears to extend with
+$1/p_{\min}$ in place of $1/p$ in the statistical term (review, §7). This argument is ours, has no
+cited counterpart and is unsigned; G7 is reported as an ablation only.
+
+\section{Sign-off}
+\begin{table}[h]\centering\small
+\begin{tabular}{llll}
+\hline
+Result & Checker (CLAUDE.md §2) & Status & Open points \\
+\hline
+Lemma~\ref{lem:1} & N & \textbf{not signed} & Azuma citation; $C^+$ \\
+Lemma~\ref{lem:1p} & N & \textbf{not signed} & -- \\
+Lemma~\ref{lem:2} and the margin & M & \textbf{not signed} & assembly rounding wording \\
+G6 per-group & -- & no proof & reported as empirical \\
+G7 extension & N & \textbf{not signed} & ablation only \\
+\hline
+\end{tabular}
+\caption{Sign-off status at the time of writing; to be completed by the named checkers.}
+\label{tab:signoff}
+\end{table}
