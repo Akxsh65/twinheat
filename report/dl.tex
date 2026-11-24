@@ -1,0 +1,210 @@
+% Deep Learning chapter (M). Compile from report/ (tables in report/tables/, written by
+% `python -m experiments.report_tables`; E5 tables by experiments/e5_accuracy.py).
+% Rule 11: every number below is \input from a generated table or copied from a results file
+% named in the comment beside it. Rule 10: cite only CLAUDE.md §16.1 papers and docs/refs files.
+% Bibliography keys used (add to the shared .bib): gibbs2021aci, tu2026, bastani2022mvp,
+% tibshirani2019, fannjiang2022, choi2026, li2021fno, pdebench2022, deepoheatv2,
+% zrnic2024, angelopoulos2021.
+
+\chapter{A calibrated neural surrogate gate}
+\label{ch:dl}
+
+This chapter covers the learning half of TwinHeat: a neural surrogate that predicts the steady
+temperature of a four-layer board in milliseconds (Section~\ref{sec:dl-surrogate}), and a gate
+that decides, design by design, whether that prediction may be trusted or must be checked by the
+exact solver (Section~\ref{sec:dl-gate}). The gate's statistical guarantee is stated in
+Section~\ref{sec:dl-guarantee} and tested in Section~\ref{sec:dl-experiments}.
+
+\section{Problem and data}
+\label{sec:dl-data}
+A design is a $100\times100$~mm board with four copper layers, up to four chips on the top
+layer, thermal vias, convection on both faces and optional heat-sunk edges. The quantity of
+interest is the temperature rise $\theta$ above ambient on a $256\times256\times4$ grid
+(262{,}144 unknowns), given by the finite-volume model of Chapter~\ref{ch:pagp}. The design
+task used by the gate experiments varies 36 numbers: four chip positions, six copper rectangles
+on layer~1 and the via density under each chip; everything else is fixed
+(\texttt{config/design\_task.yaml}, decision D2).
+
+Dataset v1 (\texttt{docs/decisions.md}, ``Dataset v1 split seeds'') has 6{,}000 training,
+1{,}000 validation, 1{,}000 calibration and 1{,}000 test boards, half of the training boards
+drawn from the 36-dimensional design space, plus out-of-distribution (OOD) sets of 500 boards
+that each move one factor out of the training range (chip count, power, copper shapes, thin
+traces, 3~oz copper, convection, boundary conditions, dense vias, chips on the bottom face).
+Every field is solved to a relative residual of $10^{-10}$ and stored with SHA-256 hashes;
+loaders refuse a hash mismatch, and the test and OOD splits are read only by the evaluation
+scripts.
+
+\section{The surrogate}
+\label{sec:dl-surrogate}
+The main model is a Fourier neural operator (FNO) \cite{li2021fno} that maps 13 input channels
+(per-layer sheet conductance, chip power density, via density per gap, convection coefficients,
+the heat-sunk-edge mask and two coordinate channels) to the four layer temperatures. It has
+4~Fourier layers of width~48 with 24 modes. Five members, differing in seed and data order,
+form an ensemble whose mean $\mu$ is the prediction and whose spread $\sigma$ is one of the
+uncertainty signals. Each member is pre-trained at $128^2$ for 100 epochs and fine-tuned at
+$256^2$ for 50 epochs, with a relative-$L_2$ loss plus 0.1 times the error on the 64 hottest
+cells, and early stopping on the validation hotspot error (\texttt{docs/decisions.md},
+``Ensemble training settings''). A U-Net and an FNO with a local $3\times3$ branch are trained
+the same way as baselines. The FNO implementation was first checked against the published
+Darcy-flow result on PDEBench \cite{pdebench2022}.
+
+Table~\ref{tab:e5} gives the test accuracy (E5). The ensemble's mean relative $L_2$ error is
+5.41\,\% % experiments/results/e5/go_no_go.md
+against the 3\,\% target of the week-5 go/no-go, so that criterion was missed; its hotspot error,
+0.764~K, % experiments/results/e5/go_no_go.md
+meets the 1.5~K target. The team decided to continue with the ensemble at $256^2$ without
+retraining (\texttt{docs/decisions.md}, week-5 go/no-go), because the gate acts on the peak
+temperature, where the error is small, and the guarantee does not depend on model accuracy, only
+the cost does. A single FNO with the local branch was more accurate on test than the ensemble;
+the ensemble was kept for its spread. Table~\ref{tab:e5-ood} gives the OOD results: the error
+grows on the sets that move power, convection and boundaries, and the feature-space OOD score
+flags those sets far more often than the test set. The bottom-chip set is the one failure the
+score does not catch: its error is very large and its flag rate is not.
+
+\begin{table}[t]\centering\small
+\input{../experiments/results/e5/e5_tables.tex}
+\caption{E5 surrogate accuracy on the test split and the OOD sets (tag of the E5 run:
+\texttt{experiments/results/e5/run\_info.json}). Top: models; bottom: the ensemble per split, with
+the rate at which the OOD score flags a board.}
+\label{tab:e5}\label{tab:e5-ood}
+\end{table}
+
+\section{The gate}
+\label{sec:dl-gate}
+For a proposed design the server computes the ensemble prediction and a label-free scale
+\[
+  s = r_{\mathrm{hot}} + \lambda\,\sigma_{\mathrm{hot}} + \varepsilon ,
+\]
+where $r_{\mathrm{hot}}$ is the mean absolute residual $|(A\mu-b)/\operatorname{diag}A|$ of the
+discrete heat equation over the 64 hottest cells of $\mu$ (one stencil pass, in kelvin) and
+$\sigma_{\mathrm{hot}}$ the ensemble spread there. The gate accepts the prediction when
+$B = q_t\,s \le \tau$ and otherwise flags the design to the exact solver. Everything the gates
+differ in is how $q_t$ is set:
+\begin{itemize}
+\item G0: no gate; G1: the DeepOHeat-v2 rule \cite{deepoheatv2}, flagging when $r_{\mathrm{hot}}$
+exceeds a moving percentile of its last 100 values, with the flag rate matched to G5's
+exact-solve budget;
+\item G2, G3: split conformal and weighted split conformal \cite{tibshirani2019,fannjiang2022,choi2026},
+calibrated once on 1{,}000 labelled designs drawn from the design-space density;
+\item G4: adaptive conformal inference (ACI) \cite{gibbs2021aci} updated with the labels of
+flagged designs only, an ablation;
+\item G5: ACI updated only on randomly audited designs; G6: the same audits feeding one threshold
+per group through the MultiValid predictor \cite{bastani2022mvp}; G7: audits whose probability
+grows with the scale, with a floor $p_{\min}$ \cite{zrnic2024}.
+\end{itemize}
+An audit is a coin $A_t\sim\mathrm{Bernoulli}(p)$ drawn by the server \emph{after} the design is
+committed and never shown to the proposer (invariant B8); an audited design is solved exactly and
+its error updates $q_t$. Designs come from three automated proposers with three aggressiveness
+levels each: a tilted MCMC sampler that favours low predicted peaks (P1), simulated annealing
+(P2) and batched gradient descent through the surrogate (P3). A logged-human proposer (P4) was
+planned but needs the user study, which was not run.
+
+\section{Guarantee}
+\label{sec:dl-guarantee}
+Let $W_T$ be the fraction of $T$ proposals that were accepted while their true peak error exceeded
+$\tau$. If the proposer's design does not depend on the current coin and $q_t$ is updated only on
+audited steps by the ACI rule with step $\gamma$ and level $\alpha$, then with probability at
+least $1-\delta$
+\[
+  W_T \;\le\; \alpha + \frac{C}{\gamma p T} + \frac{2}{p}\sqrt{\frac{\ln(4/\delta)}{T}},
+  \qquad C = \max(\alpha_1, 1-\alpha_1) + \gamma ,
+\]
+for any proposer, adversarial or human (Lemma~1, Appendix~\ref{app:lemmas}). The deterministic
+control of the audited steps is Gibbs and Cand\`es' Proposition~4.1 \cite{gibbs2021aci}, applied
+to the revealed subsequence as Tu and Giesecke do \cite{tu2026}; the transfer to all steps in
+expectation is Tu and Giesecke's Theorem~5.9. Our contributions are the first step (an accepted
+large error is a miscoverage) and the high-probability transfer, which uses the fact that the
+miscoverage indicator is fixed before the coin is drawn. When an audit stops early with a
+certified interval $[T^-,T^+]$ for the true peak (Chapter~\ref{ch:pagp}), the conservative score
+$S^+ = \max(|\hat T - T^-|, |\hat T - T^+|)/s$ keeps the bound (Lemma~1$'$).
+
+The bound is a long-run average, not a per-step statement, and it is loose at our run lengths:
+at $T = 2{,}000$, $p = 0.1$ and $\gamma = 0.05$ it exceeds~1, so it cannot by itself separate
+the gates. % report/lemma1_check_n31.md section 2; docs/decisions.md D4
+We therefore report the measured rate $M_1 = W_T$ against $\alpha$ directly, and the bound beside
+it.
+
+\section{Experiments}
+\label{sec:dl-experiments}
+\paragraph{Setup.} 45 proposer runs (P1--P3, three levels, five seeds) produced 92{,}461
+proposals; % docs/decisions.md (D4 amendment): the count on rvcse
+with the 1{,}000 calibration designs these contain 92{,}311 distinct designs,
+% experiments/oracle_report.md (93,461 input rows, 92,311 unique)
+and every one was labelled with an exact solve to a relative residual of $10^{-8}$, cross-checked on 0.5\,\% of the designs by a second solver (largest
+difference $2.7\times10^{-8}$~K, \texttt{experiments/oracle\_report.md}). Every gate is then
+replayed offline on the same trajectories with the same coins. All hyperparameters were frozen
+before the runs ($\alpha = 0.1$, $\tau = 1$~K, $\gamma = 0.05$, window 200, headline $p = 0.1$;
+\texttt{experiments/configs/frozen.yaml}, decision D4), and every number comes from a tagged
+commit.
+
+\paragraph{The pre-registered threshold was too loose to test the gates.} At $\tau = 1$~K the
+ensemble's peak error exceeded $\tau$ on only 0.1\,\% of the proposals (median error 0.115~K),
+% docs/decisions.md, D4 amendment
+so even with no gate the accepted-large-error rate is far below $\alpha$
+(Table~\ref{tab:e7-tau1}). Every gate passes trivially and the experiment cannot rank them. This
+is reported as the pre-registered result.
+
+\input{tables/e7_tau1.tex}
+
+\paragraph{Sensitivity run at $\tau = 0.2$~K.} We added one run, decided after seeing the
+error distribution and logged before running (D4 amendment), at $\tau = 0.2$~K, where 25\,\% of
+the proposals are large errors, so that the gates must work to stay below $\alpha = 0.1$
+(Table~\ref{tab:e7-tau02}). Without a gate every run exceeds $\alpha$. The audited ACI gate G5
+never exceeds $\alpha$ in any of its 135 runs, at all three audit rates, and neither does G7.
+ACI fed only with the labels of flagged designs (G4) exceeds $\alpha$ in 7 of 45 runs: it
+calibrates on a selected population, the bias Tu and Giesecke quantify (Proposition~B.14 of
+\cite{tu2026}), which is why only audits update the threshold. Weighted conformal (G3) exceeds
+$\alpha$ in 4 runs, all with the tilted sampler P1, for which its weights are exact; we do not
+have an explanation and report it as observed.
+
+\input{tables/e7_tau02.tex}
+
+The price is the exact-solve budget. At $\tau = 0.2$~K the scale $s$ is not sharp enough to
+accept most designs, so G5 sends about 90\,\% of them to the exact solver
+(Table~\ref{tab:e7-tau02}, last column). The residual-percentile gate G1, run at the same budget,
+also stays below $\alpha$, so the hypothesis that G1 fails as the proposers become more aggressive
+(H1) is not supported: at a matched budget this large, both gates are safe. A sharper
+label-free scale would lower the budget; the guarantee does not depend on it.
+
+\paragraph{Per-group validity (E15, H8).} Table~\ref{tab:e15-tau02} splits the accepted-error
+rate by proposer, aggressiveness, OOD-score tercile and hotspot position. G5 stays below
+$\alpha$ in all but 2 of its 277 group-runs, both in small groups
+% counts from report/tables/e15_tau02.tex (G5 column)
+(\texttt{edge=1}, \texttt{ood=3}). The
+multivalid gate G6, designed for per-group control, exceeds $\alpha$ in many groups, most often
+with simulated annealing (P2). H8 is not supported; G6's per-group guarantee was a target for a
+proof that was not completed and is reported as empirical. The likely causes are the small
+number of audits per group and bucket at $p = 0.1$ and the untuned MultiValid settings
+(D4, D9).
+
+\input{tables/e15_tau02.tex}
+
+\paragraph{Risk-adaptive audits (E16, H9).} Auditing high-uncertainty designs more often (G7)
+keeps the rate below $\alpha$ in every run but saves at most about 10\,\% of the audits relative
+to uniform audits (Table~\ref{tab:e16-tau02}), short of the 30\,\% that H9 asked for. Uniform
+audits remain the default. G7's update has no cited validity argument and is reported as an
+ablation only.
+
+\input{tables/e16_tau02.tex}
+
+\paragraph{Certified audits (E14, H7).} % TODO: fill from experiments/results/e14 and
+% e14_tau0.2 once the v3.4-freeze run is committed; no numbers until then.
+Audits stopped early with a certified interval (Lemma~1$'$) are evaluated in E14, from traces
+computed at tag \texttt{v3.4-freeze}; \textbf{results to be added}.
+
+\section{Limitations}
+\begin{itemize}
+\item The pre-registered $\tau = 1$~K was too loose for the experiment to rank the gates; the
+informative run at $\tau = 0.2$~K was chosen after seeing the error distribution. Both are
+reported.
+\item The Lemma~1 bound is vacuous at our run lengths and audit rates; the evidence is the measured
+rate against $\alpha$ over 45 runs per gate, which is empirical.
+\item At $\tau = 0.2$~K the gates are safe but expensive (about 90\,\% exact solves); the
+efficiency comparison at a fixed budget with feedback to the proposer (E8, H2) was not run.
+\item The surrogate missed its relative-$L_2$ target, and the OOD score does not flag the
+bottom-chip set.
+\item No human proposer (P4) and no user study (E12, H4): the pilot needs ethics approval. The
+Darcy replication (E9, H3) was cut.
+\item G6's per-group bound is unproved and its empirical per-group control failed here; G3's
+failures with P1 are unexplained.
+\end{itemize}
