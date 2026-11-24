@@ -1,0 +1,26 @@
+{
+  "commit": "fdd28ee",
+  "split": "test",
+  "dataset_hash": "9e65756b08d6c5c799713553f1613ad8d1dd7611fcaa994c21bbc1c980b51b63",
+  "mu_meta": {
+    "split": "test",
+    "n": 1000,
+    "N": 256,
+    "dataset_hash": "9e65756b08d6c5c799713553f1613ad8d1dd7611fcaa994c21bbc1c980b51b63",
+    "registry_sha256": "af9b1c676c533917897aa1917bc54583e2a594a3972e1b8d62629974790cadb5",
+    "stage": "ft256",
+    "commit": "fdd28ee",
+    "mu_sha256": "a0f6bc7ead143c1b9cc564fc38e2f27c221c12f9f652666be1a7f1305d9a6fdb",
+    "date": "2026-11-23"
+  },
+  "precond": "linez",
+  "pointwise_every": 10,
+  "maxit": 20000,
+  "kappa_iters": 60,
+  "kappa_accel": "cg",
+  "workers": 32,
+  "hardware": "rvcse Intel(R) Xeon(R) Gold 6226R CPU @ 2.90GHz",
+  "date": "2026-11-23T17:24:23.517711",
+  "oracle_tol": 1e-10,
+  "fixed_tol": 1e-08
+}
