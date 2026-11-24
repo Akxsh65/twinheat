@@ -480,3 +480,21 @@ in a verdict.
   never instead of it. Outputs: experiments/results/{e7,e15,e16}_tau0.2.
 - **Unchanged:** the H1/H8 verdict lines still compare M1 with the §8.2 bound, which is vacuous at
   p = 0.1 (D4 entry); the report reads M1 against α directly as the empirical evidence.
+
+## Pointwise w by AMG-CG, proposed 2026-11-24 (N to confirm)
+- **Finding:** E13 at v3-freeze (1,000 test boards) saved 45 % of the PCG iterations at 0.1 K
+  with the best certificate, below H6's 50 % bar; the §15 week-6 rule asks for the pointwise
+  variant. That variant was crippled by the same V-cycle weakness as κ̂ (decision "kappa-hat z by
+  AMG-CG"): w₀ from 4 V-cycles is far from A⁻¹|r̂|, so the fix-up t·z dominates w (median
+  pointwise certificate on μ 8.75e3 K for a true error of 2.51 K).
+- **Change:** `certify.pointwise.pointwise_bound(..., accel="cg")` computes w₀ with n iterations
+  of CG preconditioned by the same V-cycle; E13 takes `--pointwise-accel` / `--pointwise-iters`.
+  Validity is unchanged: Step 4 still checks w ≥ 0 and fl(A w) ≥ up(|r̂| + τ) before w is used.
+  The default stays 4 V-cycles (§8.4).
+- **Laptop check (one 256² board without a heat-sunk edge, not a report number):** the bound on μ
+  fell from 216 K (4 V-cycles) to 23 K (60 CG iterations; true error 1.56 K); along PCG from μ the
+  pointwise certificate reached 0.1 K at iteration 460 against 840 for Lemma 2(b).
+- **Re-run:** E13 again from a new tag with `--pointwise-accel cg --pointwise-iters 60`; the
+  v3-freeze run stays in the repo and is reported as the Lemma 2(b) / 4-V-cycle row. D1 already
+  judges H6 at 0.1 K counting the pointwise certificate.
+- **Owner:** N.

@@ -130,3 +130,22 @@ def test_cg_z_gives_a_valid_kappa_where_vcycles_do_not() -> None:
     assert k is not None and exact <= k <= 1.05 * exact
     with pytest.raises(ValueError, match="accel"):
         kappa_hat(A, 3, accel="gmres")
+
+
+def test_cg_pointwise_bound_is_valid_and_tighter() -> None:
+    # 4-layer board without a heat-sunk edge, N = 64: w0 by AMG-CG gives a valid Lemma 2(c)
+    # bound (|e| <= w in every cell) that is no looser than the 4-V-cycle one
+    from certify.kappa import multigrid, positive_z
+    from certify.pointwise import pointwise_bound
+    rec = next(r for r in (sample_board(s, "id") for s in range(40)) if not r["dirichlet_edges"])
+    A, b = assemble_board(SPEC, rasterise(rec, SPEC, 64), rec["dirichlet_edges"])
+    theta = spla.spsolve(A.tocsc(), b)
+    mu = theta * (1 + 0.03 * np.sin(np.arange(theta.size) / 97.0))
+    ml = multigrid(A)
+    pz = positive_z(A, 60, ml=ml, accel="cg")
+    w_cg = pointwise_bound(A, b, mu, n_vcycles=60, ml=ml, z_and_Az=pz, accel="cg")
+    w_vc = pointwise_bound(A, b, mu, ml=ml, z_and_Az=pz)
+    assert np.all(np.abs(theta - mu) <= w_cg)
+    assert w_cg.max() <= w_vc.max()
+    with pytest.raises(ValueError, match="accel"):
+        pointwise_bound(A, b, mu, ml=ml, z_and_Az=pz, accel="gmres")

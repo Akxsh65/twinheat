@@ -20,6 +20,11 @@ than ours (so ours is at least as tight). It also takes z from the same number o
 w₀. Validity does not depend on these choices: step 4 checks the Lemma 2(c) hypothesis
 directly, with the derived rounding margin (no placeholder factor). peak_interval rounds both
 ends outward (Step 7d).
+accel="cg" computes w₀ with n_vcycles iterations of CG preconditioned by the V-cycle instead of
+stationary V-cycles: on the 4-layer board the V-cycle barely reduces the near-constant mode
+(certify/kappa.py), so 4 cycles leave w₀ far from A⁻¹|r̂| and the fix-up t z dominates w. Step 4
+checks the Lemma 2(c) hypothesis either way, so validity is unchanged (docs/decisions.md,
+"pointwise w by AMG-CG").
 """
 
 from __future__ import annotations
@@ -86,6 +91,7 @@ def pointwise_bound(
     n_vcycles: int = 4,
     ml: pyamg.multilevel.MultilevelSolver | None = None,
     z_and_Az: tuple[np.ndarray, np.ndarray] | None = None,
+    accel: str | None = None,
 ) -> np.ndarray:
     """w ≥ 0 with A w ≥ |b − A x| exactly (K per cell), validity asserted; ValueError otherwise.
 
@@ -101,6 +107,8 @@ def pointwise_bound(
     for name, v in (("b", b), ("x", x)):
         if v.shape != (A.shape[0],) or not np.all(np.isfinite(v)):
             raise ValueError(f"{name} must be a finite vector of length {A.shape[0]}")
+    if accel not in (None, "cg"):
+        raise ValueError(f"accel must be None or 'cg', got {accel!r}")
     ml = multigrid(A) if ml is None else ml
     pz = positive_z(A, ml=ml) if z_and_Az is None else z_and_Az
     if pz is None:
@@ -110,7 +118,11 @@ def pointwise_bound(
     S = row_abs_sum_bound(A)
     abs_r = np.abs(b - A @ x)
     tau_r = residual_tau(S, float(np.abs(b).max()), float(np.abs(x).max()))
-    w0 = np.maximum(ml.solve(abs_r, x0=np.zeros(n), maxiter=n_vcycles, tol=0.0), 0.0)
+    if accel is None:
+        w0 = ml.solve(abs_r, x0=np.zeros(n), maxiter=n_vcycles, tol=0.0)
+    else:  # a tiny tol so that n_vcycles CG iterations run
+        w0 = ml.solve(abs_r, x0=np.zeros(n), maxiter=n_vcycles, tol=1e-14, accel="cg")
+    w0 = np.maximum(w0, 0.0)
     Aw0 = A @ w0
 
     def tau_total(v: np.ndarray) -> float:  # τ_r + τ_w for ‖w‖∞ = max v, rounded up
