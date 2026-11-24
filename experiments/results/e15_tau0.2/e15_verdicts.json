@@ -1,0 +1,29 @@
+{
+  "verdicts": [
+    {
+      "hypothesis": "H8",
+      "verdict": "NOT SUPPORTED (empirical)",
+      "parts": {
+        "G6_fraction_within_by_group": {
+          "aggr=1": 1.0,
+          "aggr=2": 1.0,
+          "aggr=3": 1.0,
+          "edge=0": 1.0,
+          "edge=1": 1.0,
+          "ood=1": 1.0,
+          "ood=2": 1.0,
+          "ood=3": 1.0,
+          "proposer=P1": 1.0,
+          "proposer=P2": 1.0,
+          "proposer=P3": 1.0
+        },
+        "G5_level3_groups_missed": []
+      },
+      "note": "empirical target (Lemma 1 form, not proved per group)"
+    }
+  ],
+  "run_commit": "c06bf1e",
+  "frozen_commit": "eb730f919a1955eee5c22d35d69c228fd6e294ad",
+  "inputs_sha256": "59fdd2d04a8c6062308649b780bcefdb04b467c899f37539a25d2a789e10f4cc",
+  "footer": "commit c06bf1e \u00b7 frozen eb730f9 \u00b7 inputs 59fdd2d04a8c \u00b7 seeds [0, 1, 2, 3, 4] \u00b7 x86_64 \u00b7 2026-11-24"
+}

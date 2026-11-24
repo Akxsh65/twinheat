@@ -1,0 +1,29 @@
+{
+  "verdicts": [
+    {
+      "hypothesis": "H9",
+      "verdict": "NOT SUPPORTED",
+      "parts": {
+        "G5_cheapest_valid": [
+          [
+            0.05
+          ],
+          101.53333333333333
+        ],
+        "G7_cheapest_valid": [
+          [
+            0.05,
+            0.02
+          ],
+          92.37777777777778
+        ],
+        "audit_ratio": 0.9098270956445612
+      },
+      "note": "exploratory; 'fewer audits' read as: cheapest valid G7 vs cheapest valid G5"
+    }
+  ],
+  "run_commit": "c06bf1e",
+  "frozen_commit": "eb730f919a1955eee5c22d35d69c228fd6e294ad",
+  "inputs_sha256": "59fdd2d04a8c6062308649b780bcefdb04b467c899f37539a25d2a789e10f4cc",
+  "footer": "commit c06bf1e \u00b7 frozen eb730f9 \u00b7 inputs 59fdd2d04a8c \u00b7 seeds [0, 1, 2, 3, 4] \u00b7 x86_64 \u00b7 2026-11-24"
+}
