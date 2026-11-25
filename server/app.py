@@ -248,6 +248,10 @@ def main(argv: Sequence[str] | None = None) -> None:
     ap.add_argument("--tau-v", type=float, default=None, help="K; required with --verify")
     ap.add_argument("--every", type=int, default=None, help="PCG iterations between iterates")
     ap.add_argument("--kappa-iters", type=int, default=None, help="AMG-CG iterations for z")
+    ap.add_argument("--model", choices=("stub", "ensemble"), default="stub",
+                    help="stub: server/model_stub.py (a direct solve, slow at n = 256); "
+                         "ensemble: the FNO ensemble of models/registry.json (stage ft256)")
+    ap.add_argument("--device", default="cuda:0", help="torch device for --model ensemble")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO)
     verify = None
@@ -255,7 +259,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         if None in (args.tau_v, args.every, args.kappa_iters):
             ap.error("--verify needs --tau-v, --every and --kappa-iters")
         verify = {"tau_v": args.tau_v, "every": args.every, "kappa_iters": args.kappa_iters}
-    app = create_app(n=args.n, dev=not args.no_dev, verify=verify)
+    predict = None
+    if args.model == "ensemble":
+        from models import inputs as inp
+        from models.ensemble import Ensemble
+        ens = Ensemble.load(ROOT / "models" / "registry.json", ROOT / "models" / "norm_stats.json",
+                            stage="ft256", device=args.device)
+
+        def predict(spec, raster, edges, record):  # noqa: ARG001  (the raster holds everything)
+            mu, sd = ens.predict(inp.build(raster, spec)[None])
+            return mu[0], sd[0]
+    app = create_app(n=args.n, dev=not args.no_dev, verify=verify, predict=predict)
     uvicorn.run(app, host=args.host, port=args.port, ws="websockets", log_level="info")
 
 
