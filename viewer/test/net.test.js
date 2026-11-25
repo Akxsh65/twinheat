@@ -153,17 +153,26 @@ test("non-JSON, untyped, unknown-type and client->server messages are rejected",
   assert.equal(handle.status.rejected, 6);
 });
 
-test("valid iterate, batch_progress and error messages are accepted but never rendered", () => {
+test("valid batch_progress and error messages are accepted but never rendered", () => {
   const { textures, handle } = fresh();
   handle(raw("verified", "valid_1"));
   const before = snapshot(textures);
-  for (const kind of ["iterate", "batch_progress", "error"]) {
+  for (const kind of ["batch_progress", "error"]) {
     const res = handle(raw(kind, "valid_1"));
     assert.equal(res.ok, true, `${kind}: ${res.error}`);
     assert.equal(handle.status.lastType, kind);
   }
   assertUntouched(textures, before);
   assert.equal(handle.status.rejected, 0);
+});
+
+test("a valid iterate is rendered: its theta replaces the field (T1.7, anytime verification)", () => {
+  const { textures, handle } = fresh();
+  handle(raw("verified", "valid_1"));
+  const res = handle(raw("iterate", "valid_1"));
+  assert.equal(res.ok, true, res.error);
+  assert.ok(res.updated.length > 0, "the iterate's theta reached the textures");
+  assert.equal(handle.status.lastId, JSON.parse(raw("iterate", "valid_1")).id);
 });
 
 test("textures start as N_LAYERS 1x1 R16F textures at zero", () => {

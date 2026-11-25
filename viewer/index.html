@@ -40,6 +40,20 @@
         display: grid;
         gap: 4px;
       }
+      #trust {
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        padding: 6px 10px;
+        font: 600 14px/1.35 system-ui, sans-serif;
+        border-radius: 4px;
+        max-width: calc(100vw - 32px);
+        pointer-events: none;
+      }
+      .trust-none { background: rgba(0, 0, 0, 0.6); color: #bbb; }
+      .trust-amber { background: #b26a00; color: #fff; }
+      .trust-blue { background: #1f5fae; color: #fff; }
+      .trust-green { background: #2e7d32; color: #fff; }
       #probe {
         position: absolute;
         padding: 3px 6px;
@@ -53,6 +67,7 @@
   <body>
     <div id="app"></div>
     <pre id="dev-overlay"></pre>
+    <div id="trust" class="trust-none" aria-live="polite">no field yet</div>
     <div id="controls">
       <div>
         <label for="peel">layer peel</label>
