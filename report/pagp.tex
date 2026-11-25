@@ -94,9 +94,10 @@ below the true error (invariant B7). Stopping when the error is certified below 
 against solving to the fixed $10^{-8}$; the pre-registered target (H6) was 50\,\% at 0.1~K,
 counting the pointwise certificate (decision D1). With the first-generation pointwise certificate
 the best saving at 0.1~K is 45\,\%, short of the target, and the week-6 rule asked for the
-improved pointwise variant, whose run is the second row of the table.
-% TODO: add one sentence on the v3.4-freeze (AMG-CG pointwise) row once
-% experiments/results/e13_pwcg is committed; no number until then.
+improved pointwise variant. With its first approximation computed by AMG-CG (second pair of rows,
+tag \texttt{v3.4-freeze}), the best certificate saves 79\,\% of the iterations at 1~K and
+59\,\% at 0.1~K, % report/tables/e13.tex (v3.4-freeze rows); experiments/results/e13_pwcg
+again with every one of the 1{,}000 boards certified and no violation: H6 passes.
 The Lemma~2(b) bound is about 200 times the true error at the stop: it bounds every cell by the
 worst case of $A^{-1}$, which is large ($\hat\kappa\approx1.5\times10^6$~K/W for a board that
 loses heat only by convection). On the $64^2$ single-layer development plate, the same procedure
