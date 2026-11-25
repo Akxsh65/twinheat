@@ -20,6 +20,12 @@ Per message (client -> server, one JSON object per websocket text frame):
 No gate exists in v0, so neither message can touch gate state or draw an audit coin (B8); v1 adds
 the gate bridge, and query must stay prediction-only there too.
 
+--verify (F7, anytime verified rendering): a `design` is answered with its pred (decision "flag":
+every committed design is verified) and then, from the same worker thread, the certified PCG
+stream of server/iterate_stream.py: `iterate` messages carrying the guaranteed band, then
+`verified`. A `query` never starts a verification (B8). While a design is verifying, the client's
+next message waits in its Inbox.
+
 dev mode (default on): every outgoing message is validated against its schema and a failure
 raises ContractError. That error is a server bug, not a client one: it is logged with its
 traceback, kept in app.state.last_error, and the connection is closed with code 1011.
@@ -47,6 +53,7 @@ from contracts.f16 import encode
 from contracts.validate import ContractError, validate
 from data.raster import rasterise
 from server import model_stub
+from server.iterate_stream import verification_messages
 from twinheat import spec as specmod
 
 __all__ = ["DEFAULT_N", "DEFAULT_PORT", "Inbox", "create_app", "main"]
@@ -102,16 +109,21 @@ def _error(msg_id: str | None, message: str) -> dict[str, Any]:
 
 
 def create_app(
-    *, spec: Any = None, n: int = DEFAULT_N, dev: bool = True, predict: Predict | None = None
+    *, spec: Any = None, n: int = DEFAULT_N, dev: bool = True, predict: Predict | None = None,
+    verify: dict[str, Any] | None = None,
 ) -> FastAPI:
     """The v0 app. spec: SpecV2 (default config/spec_v2.yaml); n: grid for rasterise/predict;
-    predict(spec, raster, dirichlet_edges, record) -> (mu, sd) float [4, n, n] in K."""
+    predict(spec, raster, dirichlet_edges, record) -> (mu, sd) float [4, n, n] in K.
+    verify: None, or {"tau_v", "every", "kappa_iters"} to stream the verification of designs."""
     if not (isinstance(n, int) and not isinstance(n, bool) and n >= 1):
         raise ValueError(f"n must be a positive int, got {n!r}")
     spec = spec if spec is not None else specmod.load(ROOT / "config" / "spec_v2.yaml")
     if not isinstance(spec, specmod.SpecV2):
         raise TypeError(f"spec must be a SpecV2 (config/spec_v2.yaml), got {type(spec).__name__}")
     predict = predict or model_stub.predict
+    if verify is not None and set(verify) != {"tau_v", "every", "kappa_iters"}:
+        raise ValueError(f"verify needs tau_v, every, kappa_iters; got {sorted(verify)}")
+    decision = dict(DECISION, design="flag") if verify is not None else DECISION
     limiter = anyio.CapacityLimiter(1)  # one inference at a time across clients (one model)
 
     app = FastAPI(title="TwinHeat server v0")
@@ -125,8 +137,10 @@ def create_app(
             validate(obj, obj["type"])  # B6: raises ContractError naming the field
         return json.dumps(obj)
 
-    def infer(msg: dict[str, Any]) -> dict[str, Any]:
-        """Runs in the inference thread. Returns the reply (pred, or error for a refused record)."""
+    def infer(msg: dict[str, Any], send_from_thread: Callable | None = None) -> dict[str, Any]:
+        """Runs in the inference thread. Returns the reply (pred, or error for a refused record).
+        With verify and a design, sends the pred and the verification stream itself through
+        send_from_thread and returns None."""
         record = msg["record"]
         try:
             raster = rasterise(record, spec, n)
@@ -136,13 +150,19 @@ def create_app(
         mu, sd = np.asarray(mu), np.asarray(sd)
         if mu.shape != sd.shape:
             raise ValueError(f"predict returned mu {mu.shape} and sd {sd.shape}")
-        return {
+        pred = {
             "schema_version": "1.0", "type": "pred", "id": msg["id"],
-            "mu": encode(mu), "sd": encode(sd), "B": None, "decision": DECISION[msg["type"]],
+            "mu": encode(mu), "sd": encode(sd), "B": None, "decision": decision[msg["type"]],
             "group": None, "peak": float(mu.max()),
             "units": {"mu": "K", "sd": "K", "B": "K", "peak": "K"},
             "shape": list(mu.shape), "t_server_ns": time.monotonic_ns(),
         }
+        if verify is None or msg["type"] != "design" or send_from_thread is None:
+            return pred  # query: prediction only, never a verification (B8)
+        send_from_thread(pred)
+        for m in verification_messages(record, mu, spec, n, msg_id=msg["id"], **verify):
+            send_from_thread(m)
+        return None
 
     @app.websocket("/")
     async def endpoint(ws: WebSocket) -> None:
@@ -182,9 +202,14 @@ def create_app(
         async def consume() -> None:
             while True:
                 msg = await box.get()
-                reply = await anyio.to_thread.run_sync(infer, msg, limiter=limiter,
-                                                       abandon_on_cancel=True)
-                await send(reply)
+
+                def send_from_thread(obj: dict[str, Any]) -> None:
+                    anyio.from_thread.run(send, obj)
+
+                reply = await anyio.to_thread.run_sync(infer, msg, send_from_thread,
+                                                       limiter=limiter, abandon_on_cancel=True)
+                if reply is not None:
+                    await send(reply)
 
         try:
             async with anyio.create_task_group() as tg:
@@ -218,9 +243,33 @@ def main(argv: Sequence[str] | None = None) -> None:
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
     ap.add_argument("--no-dev", action="store_true", help="skip outgoing schema validation")
+    ap.add_argument("--verify", action="store_true",
+                    help="stream the certified verification of every design (F7)")
+    ap.add_argument("--tau-v", type=float, default=None, help="K; required with --verify")
+    ap.add_argument("--every", type=int, default=None, help="PCG iterations between iterates")
+    ap.add_argument("--kappa-iters", type=int, default=None, help="AMG-CG iterations for z")
+    ap.add_argument("--model", choices=("stub", "ensemble"), default="stub",
+                    help="stub: server/model_stub.py (a direct solve, slow at n = 256); "
+                         "ensemble: the FNO ensemble of models/registry.json (stage ft256)")
+    ap.add_argument("--device", default="cuda:0", help="torch device for --model ensemble")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO)
-    app = create_app(n=args.n, dev=not args.no_dev)
+    verify = None
+    if args.verify:
+        if None in (args.tau_v, args.every, args.kappa_iters):
+            ap.error("--verify needs --tau-v, --every and --kappa-iters")
+        verify = {"tau_v": args.tau_v, "every": args.every, "kappa_iters": args.kappa_iters}
+    predict = None
+    if args.model == "ensemble":
+        from models import inputs as inp
+        from models.ensemble import Ensemble
+        ens = Ensemble.load(ROOT / "models" / "registry.json", ROOT / "models" / "norm_stats.json",
+                            stage="ft256", device=args.device)
+
+        def predict(spec, raster, edges, record):  # noqa: ARG001  (the raster holds everything)
+            mu, sd = ens.predict(inp.build(raster, spec)[None])
+            return mu[0], sd[0]
+    app = create_app(n=args.n, dev=not args.no_dev, verify=verify, predict=predict)
     uvicorn.run(app, host=args.host, port=args.port, ws="websockets", log_level="info")
 
 

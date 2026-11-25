@@ -3,8 +3,10 @@
 // Every server message is parsed and validated (src/contracts.js) before anything else happens.
 // Invalid messages are logged, counted and never rendered. Valid pred / verified messages carry a
 // [4, n, n] float16 field (pred: mu, verified: theta, K); it is decoded and checked completely
-// before any texture is touched, so a bad field can never leave the board half-updated. iterate,
-// batch_progress and error are validated and recorded but not rendered yet (T1.7 comes later).
+// before any texture is touched, so a bad field can never leave the board half-updated. iterate
+// messages are rendered too (their theta, T1.7: the field converging under the guaranteed band);
+// batch_progress and error are validated and recorded only. handle.status.trust holds the trust
+// state for the badge (src/trust.js), driven only by message type.
 // Parse + validate + decode cost ~60 ms for a 256 x 256 x 4 pred (two 700 kB base64 fields), so
 // in the browser they run in a worker (src/net.worker.js) and only the texture copy is on the
 // main thread; Node tests run the same two halves inline through handle(raw).
@@ -17,12 +19,13 @@ import { DataTexture, HalfFloatType, LinearFilter, RedFormat } from "three";
 
 import { validate } from "./contracts.js";
 import { decodeBits, fromHalfBits } from "./f16.js";
+import { messageInfo, nextTrust } from "./trust.js";
 
 export const N_LAYERS = 4;
 /** Message kinds a server may send (CLAUDE.md §10.3); anything else is rejected. */
 export const SERVER_KINDS = Object.freeze(["pred", "iterate", "verified", "batch_progress", "error"]);
 /** Kinds that are rendered, and the field each one renders. */
-export const RENDERED_FIELD = Object.freeze({ pred: "mu", verified: "theta" });
+export const RENDERED_FIELD = Object.freeze({ pred: "mu", iterate: "theta", verified: "theta" });
 
 function makeTexture(n, data) {
   const t = new DataTexture(data, n, n, RedFormat, HalfFloatType);
@@ -156,7 +159,13 @@ export function decodeField(msg, kind) {
 export function processMessage(raw) {
   try {
     const { kind, msg } = parseMessage(raw);
-    return { ok: true, kind, id: msg.id ?? null, field: RENDERED_FIELD[kind] ? decodeField(msg, kind) : null };
+    return {
+      ok: true,
+      kind,
+      id: msg.id ?? null,
+      field: RENDERED_FIELD[kind] ? decodeField(msg, kind) : null,
+      info: messageInfo(kind, msg),
+    };
   } catch (e) {
     return { ok: false, error: e.message };
   }
@@ -170,7 +179,9 @@ export function processMessage(raw) {
  * lastError, received, rejected.
  */
 export function createHandler({ textures, log = console.warn }) {
-  const status = { lastType: null, lastId: null, lastError: null, received: 0, rejected: 0, worker: null };
+  const status = {
+    lastType: null, lastId: null, lastError: null, received: 0, rejected: 0, worker: null, trust: null,
+  };
   function reject(error) {
     status.rejected += 1;
     status.lastError = error;
@@ -191,6 +202,7 @@ export function createHandler({ textures, log = console.warn }) {
     }
     status.lastType = result.kind;
     if (result.field) status.lastId = result.id ?? null; // id of the field now shown
+    if (result.info) status.trust = nextTrust(status.trust, result.kind, result.id ?? null, result.info);
     return { ok: true, kind: result.kind, id: result.id ?? null, updated };
   }
   const handle = (raw) => apply(processMessage(raw));

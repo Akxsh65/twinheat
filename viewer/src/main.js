@@ -4,6 +4,8 @@
 //                 ?seated      use the "local" reference space instead of "local-floor"
 //                 ?inline      parse / validate / decode on the main thread (no worker; debugging)
 //                 ?debug       expose window.twinheat = {view, textures, handle} (console, screenshots)
+//                 ?bench=<s>   E10: record every frame interval for <s> seconds, then download
+//                              e10_frames.csv (frame_index, ms, look, oit, peel, trust state)
 //                 ?hdri=<url>  an equirectangular .hdr for the realistic look's lighting (default:
 //                              three's procedural RoomEnvironment)
 //                 ?records=<url>  JSON {message id: board record} for the via columns of the mock
@@ -15,6 +17,7 @@ import { DEFAULT_LUT, LUT_NAMES } from "./lut.js";
 import { connect, createHandler, LayerTextures } from "./net.js";
 import { createProbe } from "./probe.js";
 import { createScene, GAP_DEFAULT_M, GAP_MAX_M } from "./scene.js";
+import { createTrustPanel } from "./trust.js";
 import SPEC from "./spec_constants.json";
 import { viaColumns } from "./vias.js";
 
@@ -27,6 +30,7 @@ const textures = new LayerTextures();
 const handle = createHandler({ textures });
 const view = createScene(document.getElementById("app"), { seated, hdriUrl: params.get("hdri") });
 const overlay = createDevOverlay(document.getElementById("dev-overlay"));
+const trust = createTrustPanel(document.getElementById("trust"));
 
 const peel = document.getElementById("peel");
 const peelLabel = document.getElementById("peel-value");
@@ -88,8 +92,33 @@ connect(wsUrl, handle, { worker, onState: (s) => overlay.setConnection(`${s} ${w
 
 if (params.has("debug")) window.twinheat = { view, textures, handle }; // ?debug: console / screenshots
 
+// E10 frame-time recorder (?bench=<seconds>): a CSV the report reads, never a number typed in
+const benchS = Number(params.get("bench") ?? 0);
+const frames = [];
+let benchStart = null;
+let lastT = null;
+function benchFrame(t) {
+  if (!(benchS > 0)) return;
+  if (benchStart === null) benchStart = t;
+  if (lastT !== null) {
+    frames.push([frames.length, (t - lastT).toFixed(3), document.getElementById("look").value,
+      document.getElementById("oit").value, peel.value, handle.status.trust?.state ?? "none"]);
+  }
+  lastT = t;
+  if (t - benchStart < 1000 * benchS) return;
+  const NL = String.fromCharCode(10);
+  const csv = ["frame_index,ms,look,oit,peel,trust", ...frames.map((r) => r.join(","))].join(NL);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv + NL], { type: "text/csv" }));
+  a.download = "e10_frames.csv";
+  a.click();
+  benchStart = Infinity; // once
+}
+
 view.start((time, cpuMs) => {
   view.update(textures);
   refreshVias();
   overlay.frame(time, cpuMs, handle.status);
+  trust.update(handle.status.trust);
+  benchFrame(time);
 });
