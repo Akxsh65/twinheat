@@ -1,0 +1,11 @@
+{
+  "label": "rvcse: FNO ensemble on A100, certified PCG on CPU, n=256",
+  "designs": 10,
+  "median_first_iterate_ms": 4955.958947,
+  "median_verified_ms": 18513.015857500002,
+  "first_iterate_target": "< 100.0 ms: missed",
+  "certified_target": "< 2000.0 ms: missed",
+  "commit": "ea20019",
+  "client": "rvcse x86_64",
+  "date": "2026-11-25"
+}
