@@ -1,0 +1,17 @@
+{
+  "verdicts": [
+    {
+      "hypothesis": "H7",
+      "verdict": "NOT SUPPORTED",
+      "parts": {
+        "fraction_within": 1.0,
+        "iteration_saving": 0.4765471466325478,
+        "eps_S": 0.1
+      }
+    }
+  ],
+  "run_commit": "d88c35f",
+  "frozen_commit": "eb730f919a1955eee5c22d35d69c228fd6e294ad",
+  "inputs_sha256": "e8c30c7c76a3513ff4fa7b7cce128043c792498049e6afdadba70563a5285974",
+  "footer": "commit d88c35f \u00b7 frozen eb730f9 \u00b7 inputs e8c30c7c76a3 \u00b7 seeds [0, 1, 2, 3, 4] \u00b7 x86_64 \u00b7 2026-11-25"
+}
