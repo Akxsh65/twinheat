@@ -1,0 +1,106 @@
+% Computer Graphics and VR chapter (G). Compile from report/. Tables: report/tables/e10.tex and
+% e11.tex, written by `python -m experiments.report_tables` from bench/results (rule 11).
+% Techniques are described from the module headers in viewer/src and viewer/shaders; every
+% screenshot must come from the real viewer, captioned with commit and data source.
+% Bibliography keys: mcguire2013wboit, rong2006jfa, correll2018vsup (CLAUDE.md §16.1 lists VSUP;
+% add the WBOIT and JFA papers to §16.1 before citing them, or cite them as the module headers
+% do, by author and year, with the reviewer's approval).
+
+\chapter{Seeing a certified field}
+\label{ch:cgvr}
+
+The viewer shows a 100~mm four-layer board at 1~m width on a desktop or in a WebXR headset. It
+renders the temperature field the server sends, lets the user edit the design, and makes the
+reliability of what is shown visible: a prediction, a field being verified, and a field verified
+within a guaranteed band are drawn differently and labelled. Three.js provides the scene graph and
+the WebXR session; every shader and technique below was written for this project
+(\texttt{viewer/src}, \texttt{viewer/shaders}).
+
+\section{Architecture}
+The server and the viewer talk through versioned JSON contracts over a WebSocket
+(\texttt{contracts/schemas}): \texttt{query} and \texttt{design} from the viewer, \texttt{pred},
+\texttt{iterate} and \texttt{verified} from the server, each field a base64 float16 array
+$[\text{layer},y,x]$. Every message is validated against the same schemas in Python and in
+JavaScript before anything is drawn (invariant B6). Parsing, validation and decoding of a
+$256\times256\times4$ field take tens of milliseconds, so they run in a Web Worker; the main
+thread only copies the decoded half-float bits into one R16F texture per layer.
+
+\section{Rendering techniques}
+\paragraph{Layer peel and through-thickness section (T1.1).} The four layer planes separate on a
+slider, or in VR by the change in distance between the two controllers while both grips are held,
+with exponential smoothing so tracking jitter never makes the stack jump. Thermal vias are drawn as
+instanced cylinders, one per via per gap, whose glow follows the vertical heat flux
+$\nu k_{\mathrm{Cu}} A_v(\theta_l-\theta_m)/d_{lm}$ they carry, tone-mapped by a Reinhard curve.
+The FR-4 dielectric is a translucent slab composited with weighted blended order-independent
+transparency (McGuire and Bavoil, 2013): an additive accumulation pass into an RGBA16F target, a
+multiplicative revealage pass into an R8 target and a full-screen composite, so overlapping
+translucent layers need no sorting. A vertical cut plane shows the section through the stack by
+interpolating linearly between the layer textures.
+
+\paragraph{Colour and isolines (T1.3).} Temperature maps through a 256-entry lookup table
+(inferno by default, ironbow and white-hot) shared by all layers and the colour bar. Isolines are
+drawn analytically in the fragment shader: the distance to the nearest level, divided by
+\texttt{fwidth} of the level coordinate, is a distance in screen pixels, so lines keep a constant
+width at any distance and fade out where levels crowd together instead of aliasing. A probe
+raycasts the planes and reports $25+\theta$~\textdegree C at the cell under the pointer.
+
+\paragraph{A realistic board (T1.4).} A jump-flooding pass (Rong and Tan, 2006) on the top copper
+mask gives a signed distance field in $\log_2 N$ full-screen passes; a smooth bevel profile of that
+distance yields a normal map, so copper pours read through the green solder mask with a raised
+edge. Copper, mask and silkscreen are physically based materials lit by image-based lighting,
+and every chip of the design record gets an instanced package exactly on the footprint where the
+solver deposits its heat, so the picture never shows a heat source the physics does not have.
+
+\section{Trust and anytime verified rendering (T1.6, T1.7)}
+The defining feature of the viewer is that it shows how far the picture can be trusted, using only
+what the server certifies. A status badge is driven exclusively by the type of the last valid
+message (\texttt{viewer/src/trust.js}):
+\begin{itemize}
+\item \textbf{Predicted} (amber): a network prediction. With the live gate, the badge says whether
+the gate accepted it ($B = q_t s \le \tau$; the prediction is used and nothing is solved), flagged
+it, or selected it for a random audit. While a chip is dragged, previews are never verified.
+\item \textbf{Verifying} (blue): the server streams certified iterates of the exact solver,
+warm-started from the prediction (Chapter~\ref{ch:pagp}). Each iterate replaces the drawn field,
+so the board visibly converges, and carries a guaranteed band: a number $c_k$ such that the true
+temperature of \emph{every} cell lies within $\pm c_k$ of the value drawn. The band includes the
+float16 rounding of the transmitted field, so it is rigorous for what the user actually sees.
+\item \textbf{Verified} (green): the band is below the target (0.1~K), with the iterations and
+time taken. A board without a certificate is shown as solved with no band claimed.
+\end{itemize}
+A live design panel turns the viewer into the design tool the project is about: the user picks a
+board, moves a chip in millimetre steps (each step a preview) and commits; the server's gate
+decides, the audit coin is drawn after the commit, and flagged or audited designs stream their
+verification into the same view.
+
+\section{Results}
+\paragraph{Frame rate (E10).} Table~\ref{tab:e10} records 30 seconds of frame times on the
+desktop while a verification stream plays. The viewer holds the display's refresh rate, meeting
+the 60~fps desktop target; the frame rate in a headset was not measured.
+
+\input{tables/e10.tex}
+
+\paragraph{Latency of verification (E11).} Table~\ref{tab:e11} times the live server at full
+resolution. Both targets, a first band within 100~ms of the prediction and a verified field within
+2~s, are missed. The first band waits for the certificate constant $\hat\kappa$; starting its
+computation from the previous design's vector, which stays valid because the certificate is
+checked again before use, brings the first band down for small edits (the drag row). The verified
+time is dominated by about 800 conjugate-gradient iterations on the CPU of the live server; the
+batched GPU pipeline of Chapter~\ref{ch:pagp} certifies designs 35 times faster and is the route to
+the target, but it is not yet wired into the live server.
+
+\input{tables/e11.tex}
+
+\section{What was not built}
+\begin{itemize}
+\item Flux particles and line-integral convolution (T1.2), the blackbody palette with bloom and
+tone mapping (T1.3 beyond the lookup tables) and procedural trace generation (T1.4) were cut for
+time.
+\item In VR, the layer peel and the WebXR session work, but grabbing and moving chips is
+desktop-only (the live panel); probe pen, haptics and the copper brush were not built.
+\item Uncertainty is shown as a labelled band and a badge, not as the shimmer, hatching or
+value-suppressing palettes considered in the plan.
+\item The proposer replay (T1.8) was not built, and the measured-overlay feature (T1.9) went with
+the hardware validation.
+\item The pre-registered pilot study (E12, \texttt{study/prereg.md}) was not run: it needs ethics
+approval, which was not obtained in time.
+\end{itemize}
