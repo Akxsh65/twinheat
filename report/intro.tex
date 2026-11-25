@@ -1,0 +1,58 @@
+% Introduction. Source: CLAUDE.md §1 (one line, pipeline, contributions, what we do NOT claim,
+% research questions). Numbers only by reference to the chapters' generated tables (rule 11).
+
+\chapter{Introduction}
+\label{ch:intro}
+
+Thermal design of a circuit board is a search: move chips, pour copper, place thermal vias, and
+check the peak temperature after every change. An exact solve of the steady heat equation on a
+four-layer board at useful resolution takes seconds, too slow to sit inside an interactive loop or
+an optimiser that proposes thousands of designs. A neural surrogate answers in milliseconds but
+can be wrong, and nothing in its output says when. TwinHeat combines the two so that the fast
+answer can be trusted where it is used and checked where it is not, with guarantees on both sides.
+
+\section{The pipeline}
+A five-member ensemble of Fourier neural operators predicts the steady temperature rise of a
+$100\times100$~mm four-layer board on a $256\times256\times4$ grid. For each proposed design an
+\emph{audited adaptive conformal gate} decides whether to accept the prediction or to flag the
+design to the exact solver; a random audit coin, drawn only after the design is committed and
+never shown to the proposer, sends some accepted designs to the solver as well, and those audits
+are the only data that move the gate's threshold. Flagged and audited designs are verified by a
+warm-started conjugate-gradient solve that stops as soon as an \emph{M-matrix certificate}, a
+guaranteed bound on the error in every cell, settles its question. A WebXR viewer shows the field
+converging inside that guaranteed band.
+
+\section{Contributions}
+\begin{enumerate}
+\item An M-matrix certificate with certified early stopping of verifications and audits: every
+bound is a true upper bound on the error to the exact discrete solution, including floating-point
+rounding, and a solve stops when its decision is settled rather than at a fixed tolerance
+(Chapter~\ref{ch:pagp}, Appendix~\ref{app:lemmas}).
+\item Validity of the gate for any proposer, a human included, with certified audit labels
+(Lemma~1 and 1$'$; Chapter~\ref{ch:dl}). A per-group version was a target; it is reported as an
+empirical result, not a proved one.
+\item GPU certify-on-demand: one batched, warm-started launch in which each board leaves when it is
+certified (Chapter~\ref{ch:pagp}).
+\item Rigorous per-iterate bands in an interactive, anytime-rendered viewer, and a live system in
+which the gate, the coin and certified verification run behind the user's edits
+(Chapter~\ref{ch:cgvr}).
+\end{enumerate}
+
+\paragraph{What is not claimed.} Conformal bands for neural operators; online conformal inference
+with intermittently revealed labels, including the transfer to all rounds that Lemma~1 restates;
+audits as a source of unbiased labels; active labelling for sequential risk control; gating a
+surrogate to a warm-started solver; warm starts as such; energy-form physics losses; learned
+preconditioners; energy- and $A$-norm error bounds; and the inequality
+$\|e\|\le\|A^{-1}\|\,\|r\|$. All of these are prior work. Learned certificates failed a
+preliminary test and are not claimed. Hardware validation against fabricated boards was planned
+and dropped.
+
+\section{Research questions and structure}
+The work asks whether the gate keeps accepted errors rare for any proposer and per group (RQ1), at
+what cost in exact solves (RQ2), how early the certificate settles a verification (RQ3), how many
+certified designs per second the GPU pipeline delivers (RQ4), and whether the calibrated signal
+helps designers (RQ5; the user study was not run). Chapter~\ref{ch:dl} covers the surrogate and
+the gate, Chapter~\ref{ch:pagp} the solver, the certificate and the GPU pipeline,
+Chapter~\ref{ch:cgvr} the viewer and the live system, and Chapter~\ref{ch:conclusion} summarises
+the evidence for each hypothesis. Every number in the report comes from a script run at a tagged
+commit, and every table names the result file it was generated from.

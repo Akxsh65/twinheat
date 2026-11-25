@@ -190,6 +190,8 @@ def e13_table(folders: list[tuple[str, str]]) -> str:
           r"iterations to the fixed relative residual $10^{-8}$ and to a certified error of "
           r"$\tau_v$ (Lemma 2(b), and the best of 2(b) and the pointwise 2(c)), the saving, and "
           r"the median ratio of the Lemma 2(b) bound to the true error at the stop. "
+          r"Run v3-freeze computes the pointwise certificate's first approximation $w_0$ by "
+          r"4 multigrid V-cycles, run v3.4-freeze by AMG-preconditioned CG. "
           r"Zero violations in every run.}", r"\label{tab:e13}", r"\end{table}"]
     return "\n".join(L) + "\n"
 
@@ -284,10 +286,13 @@ def main(argv: list[str] | None = None) -> None:
         "e11.tex": e11_table(),
         "bw.tex": bw_table(),
         "solvers.tex": solver_table(),
-        "e13.tex": e13_table([("e13", "v3-freeze, 2(c) w$_0$ by 4 V-cycles"),
-                              ("e13_pwcg", "v3.4-freeze, 2(c) w$_0$ by AMG-CG")]),
+        "e13.tex": e13_table([("e13", "v3-freeze"), ("e13_pwcg", "v3.4-freeze")]),
     }
     for name, text in jobs.items():
+        # scale a table down only when it is wider than the text (adjustbox, report/main.tex)
+        text = text.replace(r"\begin{tabular}", r"\begin{adjustbox}{max width=\linewidth}"
+                            r"\begin{tabular}").replace(r"\end{tabular}",
+                                                        r"\end{tabular}\end{adjustbox}")
         (a.out / name).write_text(text, encoding="utf-8")
         print(f"wrote {a.out / name}")
 

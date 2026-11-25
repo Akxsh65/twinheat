@@ -85,7 +85,7 @@ it holds with $C^+ = \alpha_1+\gamma(1-\alpha) \le C$. This is pending the check
 is not used in any verdict.
 \item \emph{Scope.} The statement needs each audit applied before the next design is gated
 (iii). The offline replay of Chapter~\ref{ch:dl} is sequential; a server that scores a batch of
-audits against a threshold that has already moved would violate (iii) (review, §5).
+audits against a threshold that has already moved would violate (iii) (review, \S5).
 \item \emph{The coin.} Assumption (ii) treats the audit coin as random and unknown to the
 proposer. A pseudo-random stream whose seed the proposer knows would break it; the seed must be
 kept from the proposer.
@@ -145,18 +145,18 @@ construction method never affects validity.
 \cite{bastani2022mvp}. The planned per-group analogue of Lemma~\ref{lem:1} was not proved: the
 transfer from audited to all steps, the dependence of $S^+$ on the threshold through early
 stopping, and the passage from per-bucket coverage in expectation to a per-group accepted-error
-rate remain open (review, §6). G6 is reported as empirical only.
+rate remain open (review, \S6). G6 is reported as empirical only.
 
 \emph{G7 (risk-adaptive audits).} With audit probabilities $p_t\ge p_{\min}$ fixed before the
 coin and importance-weighted updates, the argument of Lemma~\ref{lem:1} appears to extend with
-$1/p_{\min}$ in place of $1/p$ in the statistical term (review, §7). This argument is ours, has no
+$1/p_{\min}$ in place of $1/p$ in the statistical term (review, \S7). This argument is ours, has no
 cited counterpart and is unsigned; G7 is reported as an ablation only.
 
 \section{Sign-off}
 \begin{table}[h]\centering\small
 \begin{tabular}{llll}
 \hline
-Result & Checker (CLAUDE.md §2) & Status & Open points \\
+Result & Checker (CLAUDE.md \S2) & Status & Open points \\
 \hline
 Lemma~\ref{lem:1} & N & \textbf{not signed} & Azuma citation; $C^+$ \\
 Lemma~\ref{lem:1p} & N & \textbf{not signed} & -- \\

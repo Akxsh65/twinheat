@@ -1,0 +1,67 @@
+% Conclusion. Hypotheses as in CLAUDE.md §11.4; every verdict points to the table that holds the
+% numbers (rule 11). Verdict words are the scripts' (experiments/results/*/..._verdicts.json,
+% e13_summary.json, bench/results/pipeline_bench.json) or "not run".
+
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+\section{Evidence for each hypothesis}
+\begin{table}[h]\centering\small
+\begin{tabular}{lp{0.42\linewidth}p{0.36\linewidth}}
+\hline
+& Hypothesis & Outcome \\
+\hline
+H1 & Audited ACI (G5) keeps accepted large errors below target for every proposer; the baselines
+exceed it as proposers become aggressive &
+G5 never exceeded $\alpha$ in any run at $\tau = 0.2$~K (Table~\ref{tab:e7-tau02}); the baselines
+did not fail as predicted (only G4 did, through selection bias); at the pre-registered $\tau = 1$~K
+the test could not separate the gates (Table~\ref{tab:e7-tau1}). Not supported as stated. \\
+H2 & At equal exact-solve budget G5 finds designs no worse than G1 & not run (E8) \\
+H3 & H1 replicates on Darcy flow & not run (E9) \\
+H4 & The calibrated signal lowers designers' accepted-wrong rate & not run (no ethics approval) \\
+H5 & The GPU pipeline certifies at least ten times more designs per second &
+passed (Table~\ref{tab:e4}) \\
+H6 & Certified early stopping saves at least 50\,\% of PCG iterations at 0.1~K &
+passed with the improved pointwise certificate (Table~\ref{tab:e13}) \\
+H7 & Certified audits keep validity with at least 50\,\% fewer audit iterations &
+validity kept, saving just under 50\,\%: not supported (Table~\ref{tab:e14-tau02}) \\
+H8 & The per-group gate G6 holds per group where G5 does not & not supported
+(Table~\ref{tab:e15-tau02}) \\
+H9 & Risk-adaptive audits keep validity with 30\,\% fewer audits & not supported
+(Table~\ref{tab:e16-tau02}) \\
+H10 & The verified solver predicts measured boards & dropped with the hardware validation \\
+\hline
+\end{tabular}
+\caption{Hypotheses of the project plan and what the experiments show.}
+\label{tab:hypotheses}
+\end{table}
+
+\section{What the project shows}
+The certificate side of TwinHeat works as intended on the real four-layer problem. Every test board
+received a certificate, no certified bound was ever below the true error, and stopping when the
+error is certified rather than at a fixed tolerance saves more than half of the solver's work at a
+0.1~K guarantee. One batched GPU launch certifies designs more than thirty times as fast as the
+one-at-a-time CPU loop. Getting there required two changes to the planned construction, both
+justified by the lemma itself rather than by tuning: the certificate's auxiliary vectors had to be
+computed by multigrid-preconditioned conjugate gradients instead of a few multigrid cycles, and
+any such vector is valid as long as the positivity conditions are checked before use.
+
+The statistical side holds where it was tested: the audited gate kept the accepted-large-error
+rate below its target in every run once the threshold made large errors common, and the
+flagged-only ablation failed for the reason the theory predicts. But the experiments did not show
+the separation from the baselines that the plan expected, the high-probability bound is vacuous at
+our run lengths, and at the threshold where the gates differ they verify most designs, because the
+label-free uncertainty scale is not sharp enough to accept many of them. The per-group and
+risk-adaptive extensions did not deliver.
+
+\section{Future work}
+\begin{itemize}
+\item Run the certified verification of the live server on the GPU path, which the batched
+benchmark shows is fast enough to approach the interactive latency targets.
+\item A sharper label-free scale, so that the gate can accept more designs at a tight threshold.
+\item The per-group guarantee: a proof for the MultiValid gate, or a different construction with
+enough audits per group.
+\item The efficiency comparison at equal budget with feedback to the proposer (E8), the Darcy
+replication (E9), and the user study once ethics approval is obtained.
+\item Viewer: flux particles and the remaining visual encodings of uncertainty.
+\end{itemize}
