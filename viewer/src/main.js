@@ -17,6 +17,7 @@ import { DEFAULT_LUT, LUT_NAMES } from "./lut.js";
 import { connect, createHandler, LayerTextures } from "./net.js";
 import { createProbe } from "./probe.js";
 import { createScene, GAP_DEFAULT_M, GAP_MAX_M } from "./scene.js";
+import { createLivePanel } from "./live.js";
 import { createTrustPanel } from "./trust.js";
 import SPEC from "./spec_constants.json";
 import { viaColumns } from "./vias.js";
@@ -88,7 +89,13 @@ createProbe({
 });
 
 const worker = inline ? null : new Worker(new URL("./net.worker.js", import.meta.url), { type: "module" });
-connect(wsUrl, handle, { worker, onState: (s) => overlay.setConnection(`${s} ${wsUrl}`) });
+const conn = connect(wsUrl, handle, { worker, onState: (s) => overlay.setConnection(`${s} ${wsUrl}`) });
+// live design panel: query on every chip move, design on commit (server: python -m server.app --verify)
+createLivePanel(document.getElementById("live"), {
+  send: (msg) => conn.send(msg),
+  getRecords: () => records,
+  remember: (id, rec) => (records[id] = rec),
+});
 
 if (params.has("debug")) window.twinheat = { view, textures, handle }; // ?debug: console / screenshots
 

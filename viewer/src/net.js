@@ -284,5 +284,11 @@ export function connect(
       clearTimeout(timer);
       if (ws) ws.close();
     },
+    /** Send a client message (query / design, §10.3) as JSON text; false if not connected. */
+    send(obj) {
+      if (!ws || ws.readyState !== 1) return false;
+      ws.send(JSON.stringify(obj));
+      return true;
+    },
   };
 }
