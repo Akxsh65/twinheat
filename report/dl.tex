@@ -187,10 +187,20 @@ ablation only.
 
 \input{tables/e16_tau02.tex}
 
-\paragraph{Certified audits (E14, H7).} % TODO: fill from experiments/results/e14 and
-% e14_tau0.2 once the v3.4-freeze run is committed; no numbers until then.
-Audits stopped early with a certified interval (Lemma~1$'$) are evaluated in E14, from traces
-computed at tag \texttt{v3.4-freeze}; \textbf{results to be added}.
+\paragraph{Certified audits (E14, H7).} An audit need not solve to $10^{-8}$: it can stop
+as soon as its certified score interval lies on one side of the threshold, or is narrower than
+$\varepsilon_S$ (Lemma~1$'$; Chapter~\ref{ch:pagp}). Replaying G5 with such audits, from
+certified traces of all 9{,}176 audited designs % experiments/audit_traces.py run, tag v3.4-freeze
+computed at tag \texttt{v3.4-freeze} with every interval checked against the oracle, uses about
+48\,\% fewer audit iterations than exact audits at every $\varepsilon_S$ of the sweep, and no run
+exceeds $\alpha$ (Table~\ref{tab:e14-tau02}). The saving at the frozen $\varepsilon_S = 0.1$ is
+47.7\,\%, % experiments/results/e14_tau0.2/e14_verdicts.json
+just under the 50\,\% that H7 asked for, so H7 is not supported. Because $S^+\ge S$, certified
+audits make the threshold slightly conservative, which lowers the accepted-error rate further
+than exact audits do. The audited designs and the stopping rule do not depend on $\tau$, so the
+same saving holds at $\tau = 1$~K (\texttt{experiments/results/e14}).
+
+\input{tables/e14_tau02.tex}
 
 \section{Limitations}
 \begin{itemize}
