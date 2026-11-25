@@ -43,3 +43,12 @@ test("no certificate: no band is claimed", () => {
   assert.doesNotMatch(describe(done).text, /±/);
   assert.equal(describe(nextTrust(null, "pred", "q", { decision: "preview", peak: 1 })).cls, "trust-amber");
 });
+
+test("with the live gate, the badge shows the gate's decision and B", () => {
+  const at = (decision) => describe(nextTrust(null, "pred", "d", { decision, peak: 50, B: 0.123 }));
+  assert.match(at("accept").text, /ACCEPTED by the gate · B = 0\.12 K ≤ τ · prediction used, not verified/);
+  assert.match(at("flag").text, /FLAGGED by the gate · B = 0\.12 K > τ/);
+  assert.match(at("audit").text, /AUDITED \(random check\)/);
+  assert.match(at("preview").text, /PREVIEW while dragging · B = 0\.12 K/);
+  assert.equal(describe(nextTrust(null, "pred", "d", { decision: "flag", peak: 1, B: null })).text.includes("B ="), false);
+});

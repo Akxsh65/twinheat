@@ -14,6 +14,14 @@ which covers |θ − fl16(x_k)| in every cell. The run stops when cert_k <= tau_
 maxit (the D14 cap). A board without a certificate (κ̂ None) is solved to 1e-8 with cert_k null
 and stop_reason saying so: the viewer must then draw no guaranteed band.
 
+z warm start (z_cache, z_warm_iters): Lemma 2(a) holds for ANY z > 0 with A z > 0, so z for the
+new design is computed by z_warm_iters AMG-CG iterations started from the previous design's z
+instead of kappa_iters iterations from 0. certify.kappa.kappa_from_z then checks z > 0 and
+min(A z) > 0 with the derived FP64 margin exactly as for a cold z; if the check fails, z is
+recomputed cold. Validity never depends on the warm start, only the time does: after a 1 mm chip
+move (which also moves its via array, so the old z alone fails), 5 warm iterations gave a valid,
+equally tight κ̂ in about a fifth of the cold time on a 256² laptop test.
+
     python -m server.iterate_stream --out server/demo/verify.jsonl --designs 3 --n 256 \
         --model ensemble --device cuda:0 --tau-v 0.1 --every 10 --kappa-iters 60 \
         [--records-out viewer/public/demo/records.json]
@@ -51,9 +59,13 @@ def _f16_error(x: np.ndarray) -> float:
 
 def verification_messages(record: dict[str, Any], mu: np.ndarray, spec: Any, n: int, *,
                           msg_id: str, tau_v: float, every: int, kappa_iters: int,
-                          maxit: int = D14_MAXIT) -> Iterator[dict[str, Any]]:
-    """iterate messages, then one verified message, for one committed design (module docstring)."""
-    from certify.kappa import kappa_hat, multigrid
+                          maxit: int = D14_MAXIT, raster: Any = None,
+                          z_cache: dict[str, Any] | None = None,
+                          z_warm_iters: int | None = None) -> Iterator[dict[str, Any]]:
+    """iterate messages, then one verified message, for one committed design (module docstring).
+    raster: the design's raster at n, if the caller has it; z_cache: a dict kept across calls
+    (keys "z", "hits", "misses") for the z warm start when z_warm_iters is given."""
+    from certify.kappa import kappa_from_z, multigrid, positive_z
     from certify.margin import residual_bound, row_abs_sum_bound
     from data.raster import rasterise
     from solvers.fvm import assemble_board, coefficients
@@ -65,7 +77,7 @@ def verification_messages(record: dict[str, Any], mu: np.ndarray, spec: Any, n: 
         if isinstance(v, bool) or not isinstance(v, int) or v < 1:
             raise ValueError(f"{name} must be an int >= 1, got {v!r}")
     t0 = time.perf_counter()
-    r = rasterise(record, spec, n)
+    r = rasterise(record, spec, n) if raster is None else raster
     A, b = assemble_board(spec, r, record["dirichlet_edges"])
     A = A.tocsr()
     c = coefficients(spec, r, record["dirichlet_edges"])
@@ -73,7 +85,25 @@ def verification_messages(record: dict[str, Any], mu: np.ndarray, spec: Any, n: 
     x = np.asarray(mu, dtype=np.float64).reshape(-1).copy()
     if x.shape != b.shape:
         raise ValueError(f"mu has {x.size} values, the board {b.size}")
-    kappa = kappa_hat(A, kappa_iters, ml=multigrid(A), accel="cg")
+    kappa = None
+    warm = z_cache is not None and z_warm_iters is not None
+    ml = multigrid(A)
+    zc = z_cache.get("z") if warm else None
+    if zc is not None and zc.shape == x.shape:
+        zw = np.asarray(ml.solve(np.ones(x.size), x0=zc.copy(), maxiter=z_warm_iters, tol=1e-14,
+                                 accel="cg"), dtype=np.float64)
+        if np.all(np.isfinite(zw)):
+            kappa = kappa_from_z(A, zw)  # full FP64 check of Lemma 2(a)'s hypothesis
+        if kappa is not None:
+            z_cache["z"] = zw
+            z_cache["hits"] = z_cache.get("hits", 0) + 1
+    if kappa is None:
+        pz = positive_z(A, kappa_iters, ml=ml, accel="cg")
+        kappa = None if pz is None else kappa_from_z(A, pz[0])
+        if warm:
+            z_cache["misses"] = z_cache.get("misses", 0) + 1
+            if kappa is not None:
+                z_cache["z"] = pz[0]
     S, b_inf, bn = row_abs_sum_bound(A), float(np.abs(b).max()), float(np.linalg.norm(b))
     M = line_z_block_jacobi(c["diag"], c["gup"])
 

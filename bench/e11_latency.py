@@ -3,7 +3,10 @@
     python -m server.app --n 256 --verify --tau-v 0.1 --every 10 --kappa-iters 60   # elsewhere
     python -m bench.e11_latency --url ws://127.0.0.1:8765 --designs 10 --label "n256 stub cpu"
 
-Sends --designs committed designs (p₀ design vectors, seed --seed), one at a time, and records
+Sends --designs committed designs, one at a time: --pattern random draws each from p₀ (seed
+--seed); --pattern drag starts from one p₀ design and moves its first chip (and the via array
+under it) by +1 mm in x per design, like a user dragging a chip (the case the z warm start of
+server/iterate_stream.py speeds up). For each it records
 for each, from the server's monotonic t_server_ns stamps: the time from the pred (the gate's
 answer) to the first iterate and to the verified field, the iterations and the final band; plus
 the client round trip to the pred. §13 targets: first iterate < 100 ms after the gate fires,
@@ -29,7 +32,18 @@ ROOT = Path(__file__).resolve().parents[1]
 FIRST_ITERATE_MS, CERTIFIED_MS = 100.0, 2000.0  # CLAUDE.md §13
 
 
-def run(url: str, designs: int, seed: int) -> list[dict]:
+def _drag(rec: dict, dx: float) -> dict:
+    import copy
+    r = copy.deepcopy(rec)
+    c = r["chips"][0]
+    for a in r["via_arrays"]:
+        if (a["x0"], a["y0"], a["w"], a["h"]) == (c["x0"], c["y0"], c["w"], c["h"]):
+            a["x0"] = round(a["x0"] + dx, 3)
+    c["x0"] = round(c["x0"] + dx, 3)
+    return r
+
+
+def run(url: str, designs: int, seed: int, pattern: str = "random") -> list[dict]:
     from websockets.sync.client import connect
 
     from data.sampler import design_board
@@ -38,8 +52,9 @@ def run(url: str, designs: int, seed: int) -> list[dict]:
     rng = np.random.Generator(np.random.PCG64(seed))
     rows = []
     with connect(url, max_size=None) as ws:
+        base = design_board(sample_p0(rng))
         for i in range(designs):
-            rec = design_board(sample_p0(rng))
+            rec = design_board(sample_p0(rng)) if pattern == "random" else _drag(base, float(i))
             mid = f"e11-{i}"
             t0 = time.perf_counter()
             ws.send(json.dumps({"schema_version": "1.0", "type": "design", "id": mid,
@@ -62,7 +77,8 @@ def run(url: str, designs: int, seed: int) -> list[dict]:
                         raise RuntimeError(f"{mid}: verified before pred / iterate (server not "
                                            "started with --verify?)")
                     rows.append({
-                        "design": mid, "client_pred_ms": 1000 * (t_pred - t0),
+                        "design": mid, "pattern": pattern, "decision": pred["decision"],
+                        "client_pred_ms": 1000 * (t_pred - t0),
                         "first_iterate_ms": (first["t_server_ns"] - pred["t_server_ns"]) / 1e6,
                         "verified_ms": (m["t_server_ns"] - pred["t_server_ns"]) / 1e6,
                         "iterates": n_it, "iters": m["iters"], "cert_K": m["cert"],
@@ -76,10 +92,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--url", required=True)
     ap.add_argument("--designs", type=int, required=True)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--pattern", choices=("random", "drag"), default="random")
     ap.add_argument("--label", required=True, help="server settings, e.g. 'n256 stub cpu'")
     ap.add_argument("--out", type=Path, default=ROOT / "bench" / "results" / "e11_latency.csv")
     a = ap.parse_args(argv)
-    rows = run(a.url, a.designs, a.seed)
+    rows = run(a.url, a.designs, a.seed, a.pattern)
     a.out.parent.mkdir(parents=True, exist_ok=True)
     with a.out.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
@@ -90,7 +107,8 @@ def main(argv: list[str] | None = None) -> None:
     commit = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], cwd=ROOT,
                             capture_output=True, text=True, check=True).stdout.strip()
     summary = {
-        "label": a.label, "designs": len(rows), "median_first_iterate_ms": fi,
+        "label": a.label, "pattern": a.pattern, "designs": len(rows),
+        "median_first_iterate_ms": fi,
         "median_verified_ms": ve,
         "first_iterate_target":
             f"< {FIRST_ITERATE_MS} ms: {'met' if fi < FIRST_ITERATE_MS else 'missed'}",

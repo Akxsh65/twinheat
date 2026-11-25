@@ -57,7 +57,7 @@ def test_every_band_contains_the_exact_field_as_drawn() -> None:
 
 def test_no_certificate_means_no_band(monkeypatch) -> None:
     import certify.kappa as K
-    monkeypatch.setattr(K, "kappa_hat", lambda *a, **k: None)
+    monkeypatch.setattr(K, "kappa_from_z", lambda *a, **k: None)
     rec, theta = _board(1)
     msgs = list(IS.verification_messages(rec, theta * 1.03, SPEC, N, msg_id="d", tau_v=0.1,
                                          every=20, kappa_iters=60))

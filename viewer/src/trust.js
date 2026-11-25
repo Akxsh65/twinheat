@@ -3,7 +3,10 @@
 //
 // The state is driven ONLY by the type of the last valid server message (nextTrust), never by
 // anything the viewer computes, so the badge cannot claim more than the server sent:
-//   pred      -> "predicted" (amber; "preview" while dragging: a query, never verified, B8)
+//   pred      -> "predicted" (amber; "preview" while dragging: a query, never verified, B8).
+//                With the live gate (server --gate-frozen) the pred carries the gate's decision:
+//                accepted (B <= tau, not verified), flagged (B > tau) or audited (a random check),
+//                and the bound B in K.
 //   iterate   -> "verifying" (blue) with k and the band cert_k
 //   verified  -> "verified"  (green) with the final band, iterations and time
 // The band is the server's cert_k / cert in K: it bounds |true field − drawn field| in EVERY cell,
@@ -12,7 +15,7 @@
 
 /** Scalar fields of a valid message that the trust display needs (null for other kinds). */
 export function messageInfo(kind, msg) {
-  if (kind === "pred") return { decision: msg.decision, peak: msg.peak };
+  if (kind === "pred") return { decision: msg.decision, peak: msg.peak, B: msg.B };
   if (kind === "iterate") return { k: msg.k, band: msg.cert_k };
   if (kind === "verified") return { band: msg.cert, iters: msg.iters, ms: msg.ms, stop: msg.stop_reason };
   return null;
@@ -20,7 +23,10 @@ export function messageInfo(kind, msg) {
 
 /** The trust state after a valid message of `kind`; other kinds leave it unchanged. */
 export function nextTrust(prev, kind, id, info) {
-  if (kind === "pred") return { state: info.decision === "preview" ? "preview" : "predicted", id, peak: info.peak };
+  if (kind === "pred") {
+    const state = { preview: "preview", accept: "accepted", flag: "flagged", audit: "audited" }[info.decision];
+    return { state: state ?? "predicted", id, peak: info.peak, B: info.B ?? null };
+  }
   if (kind === "iterate") return { state: "verifying", id, k: info.k, band: info.band };
   if (kind === "verified") {
     return { state: "verified", id, band: info.band, iters: info.iters, ms: info.ms, stop: info.stop };
@@ -33,8 +39,12 @@ const fmt = (band) => (band < 0.01 ? band.toExponential(1) : band.toPrecision(2)
 /** {cls, text} for a trust state (null: nothing received yet). */
 export function describe(t) {
   if (!t) return { cls: "trust-none", text: "no field yet" };
-  if (t.state === "preview") return { cls: "trust-amber", text: "PREDICTED (preview while dragging) · not verified" };
+  const B = t.B === null || t.B === undefined ? "" : ` · B = ${fmt(t.B)} K`;
+  if (t.state === "preview") return { cls: "trust-amber", text: `PREVIEW while dragging${B} · not verified` };
   if (t.state === "predicted") return { cls: "trust-amber", text: "PREDICTED · not verified yet" };
+  if (t.state === "accepted") return { cls: "trust-amber", text: `ACCEPTED by the gate${B} ≤ τ · prediction used, not verified` };
+  if (t.state === "flagged") return { cls: "trust-amber", text: `FLAGGED by the gate${B} > τ · verification starting` };
+  if (t.state === "audited") return { cls: "trust-amber", text: `ACCEPTED${B}, AUDITED (random check) · verification starting` };
   if (t.state === "verifying") {
     const band = t.band === null ? "no certificate: no guaranteed band" : `guaranteed band ±${fmt(t.band)} K`;
     return { cls: "trust-blue", text: `VERIFYING · PCG iteration ${t.k} · ${band}` };

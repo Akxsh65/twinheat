@@ -26,6 +26,14 @@ stream of server/iterate_stream.py: `iterate` messages carrying the guaranteed b
 `verified`. A `query` never starts a verification (B8). While a design is verifying, the client's
 next message waits in its Inbox.
 
+--gate-frozen / --gate-inputs (live G5, server/live_gate.py; needs --verify): a query gets the
+gate's preview (B and accept/flag; no coin, no state change, B8); a design is committed to the
+coin, gated, and its coin drawn. pred.decision is "accept", "flag", or "audit" (accepted and
+audited). Accepted, unaudited designs get their pred only; flagged and audited designs are
+verified. An audited design's certified peak interval, taken from its verified message (the
+float16 field and its band, Lemma 1'), is the only thing that updates q.
+--z-warm-iters: start z for κ̂ from the previous design's z (server/iterate_stream; speed only).
+
 dev mode (default on): every outgoing message is validated against its schema and a failure
 raises ContractError. That error is a server bug, not a client one: it is logged with its
 traceback, kept in app.state.last_error, and the connection is closed with code 1011.
@@ -39,6 +47,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import math
 import time
 from collections import deque
 from collections.abc import Callable, Sequence
@@ -49,11 +58,12 @@ import anyio
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from contracts.f16 import encode
+from contracts.f16 import decode, encode
 from contracts.validate import ContractError, validate
 from data.raster import rasterise
 from server import model_stub
 from server.iterate_stream import verification_messages
+from solvers.fvm import coefficients
 from twinheat import spec as specmod
 
 __all__ = ["DEFAULT_N", "DEFAULT_PORT", "Inbox", "create_app", "main"]
@@ -110,11 +120,13 @@ def _error(msg_id: str | None, message: str) -> dict[str, Any]:
 
 def create_app(
     *, spec: Any = None, n: int = DEFAULT_N, dev: bool = True, predict: Predict | None = None,
-    verify: dict[str, Any] | None = None,
+    verify: dict[str, Any] | None = None, gate: Any = None, z_warm_iters: int | None = None,
 ) -> FastAPI:
     """The v0 app. spec: SpecV2 (default config/spec_v2.yaml); n: grid for rasterise/predict;
     predict(spec, raster, dirichlet_edges, record) -> (mu, sd) float [4, n, n] in K.
-    verify: None, or {"tau_v", "every", "kappa_iters"} to stream the verification of designs."""
+    verify: None, or {"tau_v", "every", "kappa_iters"} to stream the verification of designs.
+    gate: None, or a server.live_gate.LiveGate (needs verify); z_warm_iters: see the module
+    docstring."""
     if not (isinstance(n, int) and not isinstance(n, bool) and n >= 1):
         raise ValueError(f"n must be a positive int, got {n!r}")
     spec = spec if spec is not None else specmod.load(ROOT / "config" / "spec_v2.yaml")
@@ -124,6 +136,9 @@ def create_app(
     if verify is not None and set(verify) != {"tau_v", "every", "kappa_iters"}:
         raise ValueError(f"verify needs tau_v, every, kappa_iters; got {sorted(verify)}")
     decision = dict(DECISION, design="flag") if verify is not None else DECISION
+    if gate is not None and verify is None:
+        raise ValueError("a live gate needs verify: flagged and audited designs are verified")
+    z_cache: dict[str, Any] = {}
     limiter = anyio.CapacityLimiter(1)  # one inference at a time across clients (one model)
 
     app = FastAPI(title="TwinHeat server v0")
@@ -131,6 +146,9 @@ def create_app(
     app.state.received = 0
     app.state.last_error = None
     app.state.n = n
+    app.state.z_cache = z_cache
+    if gate is not None:  # v0 has no gate state at all (tests/test_server_v0.py, B8)
+        app.state.gate = gate
 
     def outgoing(obj: dict[str, Any]) -> str:
         if dev:
@@ -150,18 +168,42 @@ def create_app(
         mu, sd = np.asarray(mu), np.asarray(sd)
         if mu.shape != sd.shape:
             raise ValueError(f"predict returned mu {mu.shape} and sd {sd.shape}")
+        B, kind, gi, audited = None, decision[msg["type"]], None, False
+        if gate is not None:
+            c = coefficients(spec, raster, record["dirichlet_edges"])
+            if msg["type"] == "query":  # preview: pure decide(), no coin, no state (B8)
+                gi = gate.gate_input(msg["id"], record, mu, sd, c)
+                dec = gate.preview(gi)
+            else:
+                gi = gate.gate_input(gate.unique_id(msg["id"]), record, mu, sd, c)
+                dec, audited = gate.commit(gi)  # coin drawn after commit (B8)
+                kind = "audit" if (audited and dec.decision == "accept") else dec.decision
+            B = None if math.isinf(dec.B) else float(dec.B)
         pred = {
             "schema_version": "1.0", "type": "pred", "id": msg["id"],
-            "mu": encode(mu), "sd": encode(sd), "B": None, "decision": decision[msg["type"]],
+            "mu": encode(mu), "sd": encode(sd), "B": B, "decision": kind,
             "group": None, "peak": float(mu.max()),
             "units": {"mu": "K", "sd": "K", "B": "K", "peak": "K"},
             "shape": list(mu.shape), "t_server_ns": time.monotonic_ns(),
         }
         if verify is None or msg["type"] != "design" or send_from_thread is None:
             return pred  # query: prediction only, never a verification (B8)
+        if kind == "accept":
+            return pred  # accepted and not audited: no exact solve
         send_from_thread(pred)
-        for m in verification_messages(record, mu, spec, n, msg_id=msg["id"], **verify):
+        last = None
+        for m in verification_messages(record, mu, spec, n, msg_id=msg["id"], raster=raster,
+                                       z_cache=z_cache, z_warm_iters=z_warm_iters, **verify):
             send_from_thread(m)
+            last = m
+        if gate is not None and audited:
+            if last["cert"] is None:
+                log.warning("audit %s has no certificate: q not updated", gi.design_id)
+            else:  # the field the client was sent, and its band, bound the true peak
+                peak = float(decode(last["theta"], last["shape"]).astype(np.float64).max())
+                T_lo = float(np.nextafter(peak - last["cert"], -math.inf))
+                T_hi = float(np.nextafter(peak + last["cert"], math.inf))
+                gate.update(gi, T_lo, T_hi, last["iters"])
         return None
 
     @app.websocket("/")
@@ -252,6 +294,13 @@ def main(argv: Sequence[str] | None = None) -> None:
                     help="stub: server/model_stub.py (a direct solve, slow at n = 256); "
                          "ensemble: the FNO ensemble of models/registry.json (stage ft256)")
     ap.add_argument("--device", default="cuda:0", help="torch device for --model ensemble")
+    ap.add_argument("--gate-frozen", type=Path, default=None,
+                    help="frozen config for the live G5 gate, e.g. experiments/configs/frozen.yaml")
+    ap.add_argument("--gate-inputs", type=Path, default=None,
+                    help="folder with calibration.parquet and labels.parquet (gate_inputs)")
+    ap.add_argument("--gate-seed", type=int, default=0, help="seed of the audit coin")
+    ap.add_argument("--z-warm-iters", type=int, default=None,
+                    help="AMG-CG iterations for z started from the previous design's z (speed)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO)
     verify = None
@@ -269,7 +318,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         def predict(spec, raster, edges, record):  # noqa: ARG001  (the raster holds everything)
             mu, sd = ens.predict(inp.build(raster, spec)[None])
             return mu[0], sd[0]
-    app = create_app(n=args.n, dev=not args.no_dev, verify=verify, predict=predict)
+    gate = None
+    if (args.gate_frozen is None) != (args.gate_inputs is None):
+        ap.error("--gate-frozen and --gate-inputs go together")
+    if args.gate_frozen is not None:
+        from server.live_gate import LiveGate
+        gate = LiveGate.from_files(args.gate_frozen, args.gate_inputs, args.gate_seed)
+    app = create_app(n=args.n, dev=not args.no_dev, verify=verify, predict=predict, gate=gate,
+                     z_warm_iters=args.z_warm_iters)
     uvicorn.run(app, host=args.host, port=args.port, ws="websockets", log_level="info")
 
 
