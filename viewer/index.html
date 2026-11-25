@@ -54,6 +54,15 @@
       .trust-amber { background: #b26a00; color: #fff; }
       .trust-blue { background: #1f5fae; color: #fff; }
       .trust-green { background: #2e7d32; color: #fff; }
+      #live {
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        padding: 6px 8px;
+        background: rgba(0, 0, 0, 0.6);
+        display: grid;
+        gap: 4px;
+      }
       #probe {
         position: absolute;
         padding: 3px 6px;
@@ -68,6 +77,7 @@
     <div id="app"></div>
     <pre id="dev-overlay"></pre>
     <div id="trust" class="trust-none" aria-live="polite">no field yet</div>
+    <div id="live"></div>
     <div id="controls">
       <div>
         <label for="peel">layer peel</label>
