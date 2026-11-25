@@ -55,12 +55,11 @@ document.getElementById("sdf").addEventListener("change", (ev) => view.showSdf(e
 document.getElementById("oit").addEventListener("change", (ev) => view.setOit(ev.target.value === "wboit"));
 
 let records = {};
-if (params.get("records")) {
-  fetch(params.get("records"))
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
-    .then((j) => (records = j))
-    .catch((e) => console.warn(`could not load records ${params.get("records")}: ${e.message}`));
-}
+const recordsLoaded = params.get("records")
+  ? fetch(params.get("records"))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
+      .then((j) => (records = j))
+  : Promise.reject(new Error("no ?records= in the URL"));
 let viaKey = null;
 function refreshVias() {
   const key = `${handle.status.lastId}|${handle.status.received}|${Object.keys(records).length}`;
@@ -91,11 +90,17 @@ createProbe({
 const worker = inline ? null : new Worker(new URL("./net.worker.js", import.meta.url), { type: "module" });
 const conn = connect(wsUrl, handle, { worker, onState: (s) => overlay.setConnection(`${s} ${wsUrl}`) });
 // live design panel: query on every chip move, design on commit (server: python -m server.app --verify)
-createLivePanel(document.getElementById("live"), {
+const live = createLivePanel(document.getElementById("live"), {
   send: (msg) => conn.send(msg),
   getRecords: () => records,
   remember: (id, rec) => (records[id] = rec),
 });
+recordsLoaded
+  .then(() => live.say(`${live.refreshRecords()} designs loaded: pick one, press load`))
+  .catch((e) => {
+    console.warn(`could not load records ${params.get("records")}: ${e.message}`);
+    live.say(`no designs: ${e.message} (open ?records=/demo/records.json)`);
+  });
 
 if (params.has("debug")) window.twinheat = { view, textures, handle }; // ?debug: console / screenshots
 

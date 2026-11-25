@@ -60,11 +60,13 @@ export function createLivePanel(el, { send, getRecords, remember }) {
     say(kind === "design" ? `committed ${msg.id}: verifying…` : `preview ${msg.id}`);
   }
   function refreshRecords() {
+    // the designs to choose from: the loaded records, not the live messages sent from them
     const sel = $("live-rec");
-    const ids = Object.keys(getRecords());
-    if (sel.options.length === ids.length) return;
+    const ids = Object.keys(getRecords()).filter((id) => !id.startsWith("live-"));
+    if (sel.options.length === ids.length) return ids.length;
     sel.innerHTML = "";
     for (const id of ids) sel.add(new Option(id.slice(0, 28), id));
+    return ids.length;
   }
   $("live-load").addEventListener("click", () => {
     refreshRecords();
@@ -86,5 +88,6 @@ export function createLivePanel(el, { send, getRecords, remember }) {
     });
   }
   $("live-commit").addEventListener("click", () => post("design"));
-  return { refreshRecords };
+  say("waiting for designs (?records=...)");
+  return { refreshRecords, say };
 }
