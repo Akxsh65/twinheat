@@ -1,0 +1,12 @@
+{
+  "label": "rvcse n256, FNO ensemble, warm z (5), drag 1 mm",
+  "pattern": "drag",
+  "designs": 10,
+  "median_first_iterate_ms": 855.904115,
+  "median_verified_ms": 14650.182612,
+  "first_iterate_target": "< 100.0 ms: missed",
+  "certified_target": "< 2000.0 ms: missed",
+  "commit": "76cd736",
+  "client": "rvcse x86_64",
+  "date": "2026-11-25"
+}
