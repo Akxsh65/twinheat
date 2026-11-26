@@ -11,6 +11,8 @@
 //                 ?records=<url>  JSON {message id: board record} for the via columns of the mock
 //                              stream (server/solver_stream.py --records-out); in production the
 //                              viewer holds the record it sent in query / design (§10.3)
+//                 ?replay=<prefix>  proposer replay panel: plays <prefix>P1|P2|P3.json + .jsonl
+//                              (server/proposer_replay.py), e.g. ?replay=/demo/replay_
 
 import { createDevOverlay } from "./devOverlay.js";
 import { DEFAULT_LUT, LUT_NAMES } from "./lut.js";
@@ -18,6 +20,7 @@ import { connect, createHandler, LayerTextures } from "./net.js";
 import { createProbe } from "./probe.js";
 import { createScene, GAP_DEFAULT_M, GAP_MAX_M } from "./scene.js";
 import { createLivePanel } from "./live.js";
+import { createReplayPanel } from "./replay.js";
 import { createTrustPanel } from "./trust.js";
 import SPEC from "./spec_constants.json";
 import { viaColumns } from "./vias.js";
@@ -94,6 +97,8 @@ const live = createLivePanel(document.getElementById("live"), {
   send: (msg) => conn.send(msg),
   getRecords: () => records,
   remember: (id, rec) => (records[id] = rec),
+  getStatus: () => handle.status,
+  spec: SPEC,
 });
 recordsLoaded
   .then(() => live.say(`${live.refreshRecords()} designs loaded: pick one, press load`))
@@ -101,6 +106,14 @@ recordsLoaded
     console.warn(`could not load records ${params.get("records")}: ${e.message}`);
     live.say(`no designs: ${e.message} (open ?records=/demo/records.json)`);
   });
+
+// proposer replay (?replay=<prefix>): real offline P1 / P2 / P3 runs, no server needed
+const replayEl = document.getElementById("replay");
+if (params.get("replay")) {
+  createReplayPanel(replayEl, { handle, remember: (id, rec) => (records[id] = rec), prefix: params.get("replay") });
+} else {
+  replayEl.remove();
+}
 
 if (params.has("debug")) window.twinheat = { view, textures, handle }; // ?debug: console / screenshots
 

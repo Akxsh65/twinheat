@@ -165,6 +165,7 @@ export function processMessage(raw) {
       id: msg.id ?? null,
       field: RENDERED_FIELD[kind] ? decodeField(msg, kind) : null,
       info: messageInfo(kind, msg),
+      ...(kind === "error" ? { message: msg.message } : {}),
     };
   } catch (e) {
     return { ok: false, error: e.message };
@@ -181,6 +182,7 @@ export function processMessage(raw) {
 export function createHandler({ textures, log = console.warn }) {
   const status = {
     lastType: null, lastId: null, lastError: null, received: 0, rejected: 0, worker: null, trust: null,
+    serverError: null, // {id, message} of the last valid error message from the server
   };
   function reject(error) {
     status.rejected += 1;
@@ -202,6 +204,7 @@ export function createHandler({ textures, log = console.warn }) {
     }
     status.lastType = result.kind;
     if (result.field) status.lastId = result.id ?? null; // id of the field now shown
+    if (result.kind === "error") status.serverError = { id: result.id ?? null, message: result.message ?? "" };
     if (result.info) status.trust = nextTrust(status.trust, result.kind, result.id ?? null, result.info);
     return { ok: true, kind: result.kind, id: result.id ?? null, updated };
   }
