@@ -7,7 +7,9 @@ they look alike. This picks boards from the dataset's ID sampler (data/sampler.s
 distribution the FNO was trained on), one per feature, scanning seeds in order:
   one-chip, four-chips, heat-sunk-edges (two edges), forced-air (a forced-convection zone),
   traces (a copper trace on L1), discs (a copper disc on L1), thick-copper (2 oz outer layers),
-and adds two design-task boards (data/sampler mode "design", seeds 1 and 2). Each board then
+and keeps from an existing output file the boards whose id starts with --keep (default: the
+first design of the recorded stream, server/iterate_stream.py record mode; the design-task
+boards are near-identical, so one is enough). Each board then
 gets the dataset's power envelope (data/envelope.apply_envelope: peak rise <= THETA_MAX), using
 a direct solve at --n (64 by default, a fast estimate of the 256² peak; display data, not a
 result). Ids are "demo-<feature>-<seed>". The output directory is ignored by git.
@@ -50,8 +52,6 @@ def pick(max_seed: int) -> dict[str, dict[str, Any]]:
                 break
         else:
             raise RuntimeError(f"no ID board with feature {name!r} in seeds 0..{max_seed - 1}")
-    for seed in (1, 2):
-        out[f"demo-design-task-{seed}"] = sample_board(seed, "design")
     return out
 
 
@@ -81,8 +81,15 @@ def main(argv: list[str] | None = None) -> None:
                     default=ROOT / "viewer" / "public" / "demo" / "records.json")
     ap.add_argument("--max-seed", type=int, default=3000)
     ap.add_argument("--n", type=int, default=64, help="grid of the envelope solve")
+    ap.add_argument("--keep", default="demo-ensemble-0-",
+                    help="id prefix of boards to keep from an existing --out ('' keeps none)")
     a = ap.parse_args(argv)
     recs = envelope(pick(a.max_seed), a.n)
+    if a.out.exists() and a.keep:
+        old = json.loads(a.out.read_text(encoding="utf-8"))
+        kept = {k: v for k, v in old.items() if k.startswith(a.keep)}
+        recs.update(kept)
+        print(f"kept {sorted(kept)} from {a.out}")
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(recs), encoding="utf-8")
     print(f"wrote {len(recs)} boards to {a.out}")
